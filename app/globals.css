@@ -1,0 +1,27 @@
+:root {
+  --ink: #102A43;
+  --paper: #FFFFFF;
+  --card: #FFFFFF;
+  --teal: #2DD4BF;
+  --gold: #F4B942;
+  --accent: #102A43;
+  --line: #DADCE0;
+  --shadow: 0 1px 2px rgba(16,42,67,0.08), 0 1px 6px rgba(16,42,67,0.06);
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: 'Public Sans', sans-serif;
+}
+
+button { font-family: inherit; }
+
+input:focus { outline: none; border-color: var(--accent) !important; }
+
+.spin { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
