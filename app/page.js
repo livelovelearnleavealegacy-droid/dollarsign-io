@@ -208,7 +208,7 @@ export default function Home() {
                 Multi-Page. Multi-Signer.<br />One Envelope.
               </h1>
               <p style={{ fontSize: 16, color: "#5B5F6B", maxWidth: 440, lineHeight: 1.55, margin: "0 auto 32px" }}>
-                Upload your document, add signers, dates and text fields, pay and send.
+                No subscription. Upload your document, place your signer, date and text fields, pay and send.
               </p>
               <button onClick={() => fileInputRef.current.click()} style={{ ...primaryBtn, fontSize: 16, padding: "13px 26px", boxShadow: "var(--shadow)" }}>
                 <Upload size={17} style={{ marginRight: 8 }} /> Upload document pages
@@ -224,7 +224,7 @@ export default function Home() {
                 <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${FLAT_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>flat</span></span>
               </div>
               <ul style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 2, paddingLeft: 18, margin: 0 }}>
-                <li>No subscription. Flat rate per envelope — ${FLAT_PRICE.toFixed(2)}</li>
+                <li>Flat rate per envelope — ${FLAT_PRICE.toFixed(2)}</li>
                 <li>Up to {MAX_SIGNERS} signers</li>
                 <li>Up to {MAX_PAGES} pages</li>
                 <li>Unlimited signature, date, and text fields</li>
@@ -232,10 +232,10 @@ export default function Home() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               {[
-                { icon: <FileText size={16} />, t: "Generous Pages and Signers", d: `Up to ${MAX_PAGES} pages with up to ${MAX_SIGNERS} signers per envelope.` },
-                { icon: <PenTool size={16} />, t: "Draw or Type", d: "Each signer receives their own emailed link, signs in their own hand, or types a name." },
-                { icon: <Download size={16} />, t: "Yours to Keep", d: "Final, signed document delivered to all signers by email, ready to download." },
-                { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit cards processed by Strip. We never have your credit card information.` },
+                { icon: <FileText size={16} />, t: "Generous Capacity", d: `Up to ${MAX_PAGES} pages with up to ${MAX_SIGNERS} signers per envelope.` },
+                { icon: <PenTool size={16} />, t: "Draw or Type", d: "Each person receives their own link to sign or type their name." },
+                { icon: <Download size={16} />, t: "Yours to Keep", d: "Final document delivered to all signers by email, ready to download." },
+                { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit cards processed by Strip. We never see credit card information.` },
               ].map((c, i) => (
                 <div key={i} style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16 }}>
                   <div style={{ color: "var(--accent)", marginBottom: 8 }}>{c.icon}</div>
