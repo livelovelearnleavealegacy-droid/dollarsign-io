@@ -236,7 +236,7 @@ const onAddPages = (e) => {
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#5B5F6B" }}>page {pageIdx + 1} of {pages.length}</span>
             <button disabled={pageIdx === pages.length - 1} onClick={() => setPageIdx((i) => i + 1)} style={{ ...iconBtn, opacity: pageIdx === pages.length - 1 ? 0.3 : 1 }}><ChevronRight size={18} /></button>
             <button onClick={() => addPageInputRef.current.click()} style={{ ...chipBtn, marginLeft: "auto" }}><Plus size={13} /> Add page</button>
-            <input ref={addPageInputRef} type="file" accept="image/*" multiple onChange={onAddPages} style={{ display: "none" }} />
+          <input ref={addPageInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onAddPages} style={{ display: "none" }} />
           </div>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", padding: 12, marginBottom: 14 }}>
