@@ -2,7 +2,7 @@
 export default function Logo({ size = 40, ink = "var(--ink)" }) {
   return (
     <svg width={size} height={size * 0.86} viewBox="0 0 120 103" style={{ display: "block" }}>
-      <text x="2" y="58" fontFamily="'Fraunces', serif" fontWeight="700" fontSize="56" fill={ink}>$</text>
+      <text x="2" y="58" fontFamily="'Plus Jakarta Sans', sans-serif" fontWeight="800" fontSize="56" fill={ink}>$</text>
       <g transform="translate(30,18)">
         <polygon points="0,10 62,10 62,62 0,62" fill="var(--teal)" />
         <polyline points="0,10 31,38 62,10" fill="none" stroke="#F7FAFC" strokeWidth="2.5" />
