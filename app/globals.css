@@ -16,12 +16,10 @@ html, body {
   padding: 0;
   background: var(--paper);
   color: var(--ink);
-  font-family: 'Public Sans', sans-serif;
+  font-family: 'Plus Jakarta Sans', sans-serif;
 }
 
 button { font-family: inherit; }
-
 input:focus { outline: none; border-color: var(--accent) !important; }
-
 .spin { animation: spin 0.8s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
