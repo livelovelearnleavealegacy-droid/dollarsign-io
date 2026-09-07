@@ -17,7 +17,12 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/favicon-light.png" media="(prefers-color-scheme: light)" />
         <link rel="icon" href="/favicon-dark.png" media="(prefers-color-scheme: dark)" />
       </head>
-      <body>{children}</body>
+      <body>
+        {children}
+        <footer style={{ textAlign: "center", padding: "24px 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "#9AA0AA" }}>
+          DollarSign.io © Live, Love, Learn, Leave a Legacy LLC
+        </footer>
+      </body>
     </html>
   );
 }
