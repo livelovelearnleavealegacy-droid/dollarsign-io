@@ -112,8 +112,8 @@ export default function SignPage({ params }) {
     return (
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "60px 20px", textAlign: "center" }}>
         <Seal label="SIGNED" date={todayStr()} size={110} />
-        <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 600, margin: "18px 0 6px", color: "var(--ink)" }}>You're all set</h2>
-        <p style={{ color: "#5B5F6B", fontSize: 14 }}>Your part of tracking {envelope.trackingId} is complete.</p>
+        <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 600, margin: "18px 0 6px", color: "var(--ink)" }}>You're all set</h2>
+        <p style={{ color: "#5B5F6B", fontSize: 16 }}>Your part of tracking {envelope.trackingId} is complete.</p>
       </div>
     );
   }
@@ -123,18 +123,18 @@ export default function SignPage({ params }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <Logo size={22} />
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, color: "#8A8F98" }}>{envelope.trackingId}</span>
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>{envelope.trackingId}</span>
         </div>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: signer.color }}>signing as {signer.name}</span>
+        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: signer.color }}>signing as {signer.name}</span>
       </div>
 
-      <p style={{ fontSize: 14, color: "#5B5F6B", margin: "16px 0" }}>
+      <p style={{ fontSize: 16, color: "#5B5F6B", margin: "16px 0" }}>
         {envelope.senderName || "Someone"} sent you this document. Review every page, fill in your fields, then submit.
       </p>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
         <button disabled={pageIdx === 0} onClick={() => goToPage(pageIdx - 1)} style={{ ...iconBtn, opacity: pageIdx === 0 ? 0.3 : 1 }}><ChevronLeft size={18} /></button>
-        <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#5B5F6B" }}>
+        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#5B5F6B" }}>
           page {pageIdx + 1} of {envelope.pages.length} {visitedPages.has(pageIdx) ? "" : "· not yet reviewed"}
         </span>
         <button disabled={pageIdx === envelope.pages.length - 1} onClick={() => goToPage(pageIdx + 1)} style={{ ...iconBtn, opacity: pageIdx === envelope.pages.length - 1 ? 0.3 : 1 }}><ChevronRight size={18} /></button>
@@ -162,14 +162,14 @@ export default function SignPage({ params }) {
               {f.value ? (
                 f.kind === "signature" ? (
                   f.value.type === "image" ? <img src={f.value.data} alt="sig" style={{ height: 26 }} /> : <span style={{ fontFamily: "'Caveat', cursive", fontSize: 22 }}>{f.value.data}</span>
-                ) : <span style={{ fontFamily: f.kind === "date" ? "'IBM Plex Mono', monospace" : "'Public Sans', sans-serif", fontSize: 12.5 }}>{f.value}</span>
+                ) : <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16 }}>{f.value}</span>
               ) : mine ? (
-                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, color: owner.color, display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: owner.color, display: "flex", alignItems: "center", gap: 5 }}>
                   {f.kind === "signature" ? <PenTool size={12} /> : f.kind === "date" ? <CalendarDays size={12} /> : <Type size={12} />}
                   tap to {f.kind === "signature" ? "sign" : f.kind === "date" ? "date" : "fill in"}
                 </span>
               ) : (
-                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, color: "#9AA0AA", display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#9AA0AA", display: "flex", alignItems: "center", gap: 5 }}>
                   <Lock size={11} /> {owner.name}
                 </span>
               )}
@@ -179,7 +179,7 @@ export default function SignPage({ params }) {
       </div>
 
       {!allPagesReviewed && (
-        <p style={{ fontSize: 11.5, fontFamily: "'IBM Plex Mono', monospace", color: "#C1440E", marginTop: 10 }}>
+        <p style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#C1440E", marginTop: 10 }}>
           visit every page before you can submit ({visitedPages.size} of {envelope.pages.length} reviewed)
         </p>
       )}
@@ -188,11 +188,11 @@ export default function SignPage({ params }) {
         <div style={{ maxWidth: 608, margin: "0 auto" }}>
           <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10, cursor: "pointer" }}>
             <input type="checkbox" checked={attested} onChange={(e) => setAttested(e.target.checked)} style={{ marginTop: 2 }} />
-            <span style={{ fontSize: 12, color: "#3A3F47", lineHeight: 1.4 }}>
+            <span style={{ fontSize: 16, color: "#3A3F47", lineHeight: 1.4 }}>
               I intend this electronic mark to be my legal signature, equivalent to my handwritten signature, and I confirm I've reviewed this document.
             </span>
           </label>
-          {submitError && <p style={{ color: "#C1440E", fontSize: 12, marginBottom: 8 }}>{submitError}</p>}
+          {submitError && <p style={{ color: "#C1440E", fontSize: 16, marginBottom: 8 }}>{submitError}</p>}
           <button disabled={!canSubmit || submitting} onClick={submit} style={{ ...primaryBtn, width: "100%", opacity: canSubmit ? 1 : 0.4 }}>
             <Check size={16} style={{ marginRight: 6 }} />
             {submitting
@@ -218,8 +218,8 @@ function StatusScreen({ title, message }) {
   return (
     <div style={{ maxWidth: 420, margin: "0 auto", padding: "80px 20px", textAlign: "center" }}>
       <Logo size={40} />
-      <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: 20, fontWeight: 600, margin: "16px 0 6px", color: "var(--ink)" }}>{title}</h2>
-      <p style={{ color: "#5B5F6B", fontSize: 14 }}>{message}</p>
+      <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 600, margin: "16px 0 6px", color: "var(--ink)" }}>{title}</h2>
+      <p style={{ color: "#5B5F6B", fontSize: 16 }}>{message}</p>
     </div>
   );
 }
