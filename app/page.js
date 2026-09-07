@@ -30,13 +30,27 @@ export default function Home() {
   const fileInputRef = useRef(null);
   const addPageInputRef = useRef(null);
 
+const uploadPage = async (blob, mime, w, h) => {
+  const formData = new FormData();
+  formData.append("file", blob, `page.${mime.split("/")[1]}`);
+  formData.append("width", w);
+  formData.append("height", h);
+  const res = await fetch("/api/pages", { method: "POST", body: formData });
+  if (!res.ok) throw new Error("Failed to upload a page. Please try again.");
+  const { id } = await res.json();
+  return { id, src: `/api/pages/${id}`, w, h };
+};
+
 const fileToImagePage = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const img = new Image();
-      img.onload = () =>
-        resolve([{ id: uid(), src: reader.result, w: img.naturalWidth, h: img.naturalHeight }]);
+      img.onload = () => {
+        uploadPage(file, file.type, img.naturalWidth, img.naturalHeight)
+          .then((page) => resolve([page]))
+          .catch(reject);
+      };
       img.onerror = reject;
       img.src = reader.result;
     };
@@ -55,13 +69,15 @@ const fileToPdfPages = async (file) => {
 
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 2 }); // 2x for signature/text clarity
+    const viewport = page.getViewport({ scale: 2 });
     const canvas = document.createElement("canvas");
     canvas.width = viewport.width;
     canvas.height = viewport.height;
     const ctx = canvas.getContext("2d");
     await page.render({ canvasContext: ctx, viewport }).promise;
-    pages.push({ id: uid(), src: canvas.toDataURL("image/png"), w: canvas.width, h: canvas.height });
+
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+    pages.push(await uploadPage(blob, "image/jpeg", canvas.width, canvas.height));
   }
   return pages;
 };
@@ -70,24 +86,14 @@ const loadFiles = (fileList, cb) => {
   const files = Array.from(fileList);
   Promise.all(
     files.map((f) => (f.type === "application/pdf" ? fileToPdfPages(f) : fileToImagePage(f)))
-  ).then((pageArrays) => cb(pageArrays.flat()));
+  )
+    .then((pageArrays) => cb(pageArrays.flat()))
+    .catch((err) => {
+      console.error(err);
+      alert("Something went wrong uploading your document. Please try again.");
+    });
 };
-
-const onUpload = (e) => {
-  if (!e.target.files?.length) return;
-  loadFiles(e.target.files, (newPages) => {
-    setPages(newPages);
-    setPageIdx(0);
-    setActiveSignerId(signers[0].id);
-    setStep("editor");
-  });
-};
-
-const onAddPages = (e) => {
-  if (!e.target.files?.length) return;
-  loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]));
-};
-
+  
   const addSigner = () => {
     setSigners((s) => [...s, { id: uid(), name: `Signer ${s.length + 1}`, email: "", color: SIGNER_COLORS[s.length % SIGNER_COLORS.length], isSelf: false }]);
   };
