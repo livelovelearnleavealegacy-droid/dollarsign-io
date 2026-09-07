@@ -61,8 +61,8 @@ export default function EnvelopeStatusPage({ params }) {
           return (
             <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
               {complete ? <Check size={16} color="#4E8B5A" /> : <Clock size={16} color="#9AA0AA" />}
-              <div style={{ flex: 1, fontSize: 13, color: "var(--ink)" }}>{s.name}</div>
-              <span style={{ fontSize: 10.5, fontFamily: "'IBM Plex Mono', monospace", color: complete ? "#4E8B5A" : "#9AA0AA" }}>{complete ? "signed" : "pending"}</span>
+              <div style={{ flex: 1, fontSize: 16, color: "var(--ink)" }}>{s.name}</div>
+              <span style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: complete ? "#4E8B5A" : "#9AA0AA" }}>{complete ? "signed" : "pending"}</span>
             </div>
           );
         })}
@@ -70,7 +70,7 @@ export default function EnvelopeStatusPage({ params }) {
 
       {envelope.status === "completed" && (
         building ? (
-          <p style={{ fontSize: 13, color: "#8A8F98" }}>Flattening pages and building the audit certificate…</p>
+          <p style={{ fontSize: 16, color: "#8A8F98" }}>Flattening pages and building the audit certificate…</p>
         ) : (
           <>
             {finalPages.map((fp, i) => (
@@ -86,13 +86,13 @@ export default function EnvelopeStatusPage({ params }) {
               <div style={{ marginTop: 30, paddingTop: 24, borderTop: "1px solid var(--line)" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 12 }}>
                   <ShieldCheck size={16} color="var(--teal)" />
-                  <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1, color: "#8A8F98" }}>AUDIT CERTIFICATE</span>
+                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98" }}>AUDIT CERTIFICATE</span>
                 </div>
                 <img src={certificateUrl} alt="certificate of completion" style={{ width: "100%", borderRadius: 8, border: "1px solid var(--line)", marginBottom: 8 }} />
                 <a href={certificateUrl} download={`${envelope.trackingId}-certificate.png`} style={dlBtn}>
                   <Download size={15} style={{ marginRight: 6 }} /> Download certificate
                 </a>
-                <p style={{ fontSize: 10.5, fontFamily: "'IBM Plex Mono', monospace", color: "#9AA0AA", marginTop: 10, wordBreak: "break-all" }}>
+                <p style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#9AA0AA", marginTop: 10, wordBreak: "break-all" }}>
                   sha256 {documentHash}
                 </p>
               </div>
@@ -104,9 +104,9 @@ export default function EnvelopeStatusPage({ params }) {
   );
 }
 
-const h2 = { fontFamily: "'Fraunces', serif", fontSize: 22, fontWeight: 600, margin: "18px 0 6px", color: "var(--ink)" };
-const p = { color: "#5B5F6B", fontSize: 14, marginBottom: 20 };
-const dlBtn = { background: "var(--accent)", color: "#fff", borderRadius: 7, padding: "11px 18px", fontSize: 14, fontWeight: 600, display: "flex", justifyContent: "center", alignItems: "center", textDecoration: "none" };
+const h2 = { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 600, margin: "18px 0 6px", color: "var(--ink)" };
+const p = { color: "#5B5F6B", fontSize: 16, marginBottom: 20 };
+const dlBtn = { background: "var(--accent)", color: "#fff", borderRadius: 7, padding: "11px 18px", fontSize: 16, fontWeight: 600, display: "flex", justifyContent: "center", alignItems: "center", textDecoration: "none" };
 
 function Centered({ children }) {
   return <div style={{ maxWidth: 420, margin: "0 auto", padding: "80px 20px", textAlign: "center" }}>{children}</div>;
