@@ -33,16 +33,16 @@ export default function FieldTag({ field, signer, onDrag, onRemove, containerRef
             ? <img src={field.value.data} alt="signature" style={{ height: 26, display: "block" }} />
             : <span style={{ fontFamily: "'Caveat', cursive", fontSize: 22, color: "#102A43" }}>{field.value.data}</span>
         ) : field.kind === "date" ? (
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#102A43" }}>{field.value}</span>
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#102A43" }}>{field.value}</span>
         ) : (
-          <span style={{ fontFamily: "'Public Sans', sans-serif", fontSize: 12.5, color: "#102A43" }}>{field.value}</span>
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#102A43" }}>{field.value}</span>
         )
       ) : (
         <>
           {field.kind === "signature" ? <PenTool size={12} color={signer.color} />
             : field.kind === "date" ? <CalendarDays size={12} color={signer.color} />
             : <Type size={12} color={signer.color} />}
-          <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10, color: signer.color }}>
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: signer.color }}>
             {signer.name}{field.kind === "text" ? " · title" : ""}
           </span>
         </>
