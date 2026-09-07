@@ -30,32 +30,63 @@ export default function Home() {
   const fileInputRef = useRef(null);
   const addPageInputRef = useRef(null);
 
-  const loadFiles = (fileList, cb) => {
-    const files = Array.from(fileList);
-    Promise.all(files.map((f) => new Promise((resolve) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        const img = new Image();
-        img.onload = () => resolve({ id: uid(), src: reader.result, w: img.naturalWidth, h: img.naturalHeight });
-        img.src = reader.result;
-      };
-      reader.readAsDataURL(f);
-    }))).then(cb);
-  };
+const fileToImagePage = (file) =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () =>
+        resolve([{ id: uid(), src: reader.result, w: img.naturalWidth, h: img.naturalHeight }]);
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
 
-  const onUpload = (e) => {
-    if (!e.target.files?.length) return;
-    loadFiles(e.target.files, (newPages) => {
-      setPages(newPages);
-      setPageIdx(0);
-      setActiveSignerId(signers[0].id);
-      setStep("editor");
-    });
-  };
-  const onAddPages = (e) => {
-    if (!e.target.files?.length) return;
-    loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]));
-  };
+const fileToPdfPages = async (file) => {
+  const pdfjsLib = await import("pdfjs-dist");
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+  const pages = [];
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({ scale: 2 }); // 2x for signature/text clarity
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    const ctx = canvas.getContext("2d");
+    await page.render({ canvasContext: ctx, viewport }).promise;
+    pages.push({ id: uid(), src: canvas.toDataURL("image/png"), w: canvas.width, h: canvas.height });
+  }
+  return pages;
+};
+
+const loadFiles = (fileList, cb) => {
+  const files = Array.from(fileList);
+  Promise.all(
+    files.map((f) => (f.type === "application/pdf" ? fileToPdfPages(f) : fileToImagePage(f)))
+  ).then((pageArrays) => cb(pageArrays.flat()));
+};
+
+const onUpload = (e) => {
+  if (!e.target.files?.length) return;
+  loadFiles(e.target.files, (newPages) => {
+    setPages(newPages);
+    setPageIdx(0);
+    setActiveSignerId(signers[0].id);
+    setStep("editor");
+  });
+};
+
+const onAddPages = (e) => {
+  if (!e.target.files?.length) return;
+  loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]));
+};
 
   const addSigner = () => {
     setSigners((s) => [...s, { id: uid(), name: `Signer ${s.length + 1}`, email: "", color: SIGNER_COLORS[s.length % SIGNER_COLORS.length], isSelf: false }]);
@@ -146,7 +177,7 @@ export default function Home() {
               <button onClick={() => fileInputRef.current.click()} style={{ ...primaryBtn, fontSize: 15, padding: "13px 26px", boxShadow: "var(--shadow)" }}>
                 <Upload size={17} style={{ marginRight: 8 }} /> Upload document pages
               </button>
-              <input ref={fileInputRef} type="file" accept="image/*" multiple onChange={onUpload} style={{ display: "none" }} />
+              <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onUpload} style={{ display: "none" }} />
             </div>
           </div>
 
