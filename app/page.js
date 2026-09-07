@@ -7,7 +7,7 @@ import {
 import Logo from "@/components/Logo";
 import FieldTag from "@/components/FieldTag";
 import {
-  BASE_PRICE, SIGNER_COLORS, calcPrice, uid,
+  FLAT_PRICE, MAX_SIGNERS, MAX_PAGES, SIGNER_COLORS, calcPrice, uid,
   primaryBtn, iconBtn, chipBtn, inputStyle,
 } from "@/lib/shared";
 
@@ -82,12 +82,21 @@ export default function Home() {
     return pages;
   };
 
-  const loadFiles = (fileList, cb) => {
+  const loadFiles = (fileList, cb, existingCount = 0) => {
     const files = Array.from(fileList);
     Promise.all(
       files.map((f) => (f.type === "application/pdf" ? fileToPdfPages(f) : fileToImagePage(f)))
     )
-      .then((pageArrays) => cb(pageArrays.flat()))
+      .then((pageArrays) => {
+        let newPages = pageArrays.flat();
+        const total = existingCount + newPages.length;
+        if (total > MAX_PAGES) {
+          const allowed = Math.max(0, MAX_PAGES - existingCount);
+          newPages = newPages.slice(0, allowed);
+          alert(`This plan supports up to ${MAX_PAGES} pages. Only the first ${allowed} new page(s) were added.`);
+        }
+        cb(newPages);
+      })
       .catch((err) => {
         console.error(err);
         alert("Something went wrong uploading your document. Please try again.");
@@ -101,15 +110,19 @@ export default function Home() {
       setPageIdx(0);
       setActiveSignerId(signers[0].id);
       setStep("editor");
-    });
+    }, 0);
   };
 
   const onAddPages = (e) => {
     if (!e.target.files?.length) return;
-    loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]));
+    loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]), pages.length);
   };
 
   const addSigner = () => {
+    if (signers.length >= MAX_SIGNERS) {
+      alert(`This plan supports up to ${MAX_SIGNERS} signers.`);
+      return;
+    }
     setSigners((s) => [...s, { id: uid(), name: `Signer ${s.length + 1}`, email: "", color: SIGNER_COLORS[s.length % SIGNER_COLORS.length], isSelf: false }]);
   };
   const removeSigner = (id) => {
@@ -131,7 +144,7 @@ export default function Home() {
   }, []);
   const removeField = (id) => setFields((fs) => fs.filter((f) => f.id !== id));
 
-  const price = calcPrice(signers, pages.length);
+  const price = calcPrice();
   const currentPage = pages[pageIdx];
   const pageFields = fields.filter((f) => f.pageId === currentPage?.id);
   const readyToCreate =
@@ -155,7 +168,10 @@ export default function Home() {
           pages, signers, fields,
         }),
       });
-      if (!createRes.ok) throw new Error("Couldn't save the envelope.");
+      if (!createRes.ok) {
+        const err = await createRes.json();
+        throw new Error(err.error || "Couldn't save the envelope.");
+      }
       const { envelope } = await createRes.json();
 
       const checkoutRes = await fetch("/api/checkout", {
@@ -205,18 +221,19 @@ export default function Home() {
             <div style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: "18px 20px", marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
                 <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>PRICING</span>
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${BASE_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>base</span></span>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${FLAT_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>flat</span></span>
               </div>
               <ul style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 2, paddingLeft: 18, margin: 0 }}>
-                <li>Up to 2 signers, unlimited fields, up to 10 pages — ${BASE_PRICE.toFixed(2)}</li>
-                <li>Each additional block of 10 pages — +${BASE_PRICE.toFixed(2)}</li>
-                <li>Each signer beyond 2 — +${BASE_PRICE.toFixed(2)} per 10-page block</li>
+                <li>One flat price, every envelope — ${FLAT_PRICE.toFixed(2)}</li>
+                <li>Up to {MAX_SIGNERS} signers</li>
+                <li>Up to {MAX_PAGES} pages</li>
+                <li>Unlimited signature, date, and text fields</li>
               </ul>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
               {[
-                { icon: <FileText size={16} />, t: "Any number of pages", d: "Upload every page at once, or add more later." },
-                { icon: <Users size={16} />, t: "Multiple signers", d: "Each gets a real email with their own signing link." },
+                { icon: <FileText size={16} />, t: "Any number of pages", d: `Upload up to ${MAX_PAGES} pages at once, or add more later.` },
+                { icon: <Users size={16} />, t: "Multiple signers", d: `Add up to ${MAX_SIGNERS} signers, each with their own signing link.` },
                 { icon: <PenTool size={16} />, t: "Draw or type", d: "Each signer signs in their own hand, or types a name." },
                 { icon: <Download size={16} />, t: "Yours to keep", d: "Every page flattened and signed, ready to download." },
               ].map((c, i) => (
@@ -255,7 +272,7 @@ export default function Home() {
             <button disabled={pageIdx === 0} onClick={() => setPageIdx((i) => i - 1)} style={{ ...iconBtn, opacity: pageIdx === 0 ? 0.3 : 1 }}><ChevronLeft size={18} /></button>
             <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#5B5F6B" }}>page {pageIdx + 1} of {pages.length}</span>
             <button disabled={pageIdx === pages.length - 1} onClick={() => setPageIdx((i) => i + 1)} style={{ ...iconBtn, opacity: pageIdx === pages.length - 1 ? 0.3 : 1 }}><ChevronRight size={18} /></button>
-            <button onClick={() => addPageInputRef.current.click()} style={{ ...chipBtn, marginLeft: "auto" }}><Plus size={13} /> Add page</button>
+            <button onClick={() => { if (pages.length >= MAX_PAGES) { alert(`This plan supports up to ${MAX_PAGES} pages.`); return; } addPageInputRef.current.click(); }} style={{ ...chipBtn, marginLeft: "auto", opacity: pages.length >= MAX_PAGES ? 0.4 : 1 }}><Plus size={13} /> Add page</button>
             <input ref={addPageInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onAddPages} style={{ display: "none" }} />
           </div>
 
@@ -294,7 +311,7 @@ export default function Home() {
                   )}
                 </div>
               ))}
-              <button onClick={addSigner} style={{ ...chipBtn, alignSelf: "flex-start" }}><Plus size={13} /> Add signer</button>
+              <button onClick={addSigner} style={{ ...chipBtn, alignSelf: "flex-start", opacity: signers.length >= MAX_SIGNERS ? 0.4 : 1 }}><Plus size={13} /> Add signer</button>
             </div>
           </div>
 
