@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Mail, MailCheck, MailX } from "lucide-react";
 import Logo from "@/components/Logo";
 
-export default function CheckoutSuccessPage() {
+function CheckoutSuccessInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const envelopeId = searchParams.get("envelope");
@@ -17,9 +17,6 @@ export default function CheckoutSuccessPage() {
     let cancelled = false;
     let attempts = 0;
 
-    // Stripe confirms payment via webhook, which is asynchronous relative
-    // to this redirect — poll briefly rather than assuming it's already
-    // done the instant the browser lands back here.
     const poll = async () => {
       attempts += 1;
       try {
@@ -106,6 +103,14 @@ export default function CheckoutSuccessPage() {
         You'll get a completion email once everyone's done. Check status anytime at <code>/e/{envelope.id}</code>.
       </p>
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<Centered><Logo size={40} /><h2 style={h2}>Loading…</h2></Centered>}>
+      <CheckoutSuccessInner />
+    </Suspense>
   );
 }
 
