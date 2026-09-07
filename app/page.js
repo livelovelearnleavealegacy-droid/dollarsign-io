@@ -67,6 +67,21 @@ const fileToPdfPages = async (file) => {
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   const pages = [];
 
+const onUpload = (e) => {
+  if (!e.target.files?.length) return;
+  loadFiles(e.target.files, (newPages) => {
+    setPages(newPages);
+    setPageIdx(0);
+    setActiveSignerId(signers[0].id);
+    setStep("editor");
+  });
+};
+
+const onAddPages = (e) => {
+  if (!e.target.files?.length) return;
+  loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]));
+};
+  
   for (let i = 1; i <= pdf.numPages; i++) {
     const page = await pdf.getPage(i);
     const viewport = page.getViewport({ scale: 2 });
