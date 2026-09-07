@@ -18,5 +18,6 @@
     "resend": "^3.4.0",
     "better-sqlite3": "^11.1.2",
     "stripe": "^16.8.0"
+    "pdfjs-dist": "5.4.54"
   }
 }
