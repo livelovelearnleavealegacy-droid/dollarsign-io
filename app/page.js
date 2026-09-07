@@ -184,18 +184,18 @@ export default function Home() {
             <div style={{ maxWidth: 560, margin: "0 auto" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
                 <Logo size={36} />
-                <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: 22, color: "var(--ink)" }}>DollarSign<span style={{ color: "var(--teal)" }}>.io</span></span>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, color: "var(--ink)" }}>DollarSign<span style={{ color: "var(--teal)" }}>.io</span></span>
               </div>
-              <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11.5, letterSpacing: 1, color: "#8A8F98", margin: "0 0 34px" }}>
+              <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98", margin: "0 0 34px" }}>
                 Pay as you go. Sign with confidence.
               </p>
-              <h1 style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: "clamp(30px,6vw,44px)", lineHeight: 1.12, margin: "0 0 16px", color: "var(--ink)" }}>
+              <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "clamp(30px,6vw,44px)", lineHeight: 1.12, margin: "0 0 16px", color: "var(--ink)" }}>
                 Multi-page. Multi-signer.<br />Still one envelope.
               </h1>
               <p style={{ fontSize: 16, color: "#5B5F6B", maxWidth: 440, lineHeight: 1.55, margin: "0 auto 32px" }}>
                 Upload every page, add everyone who needs to sign, drop in as many signature, date, and text fields as the document needs. Signers get a real email with their signing link.
               </p>
-              <button onClick={() => fileInputRef.current.click()} style={{ ...primaryBtn, fontSize: 15, padding: "13px 26px", boxShadow: "var(--shadow)" }}>
+              <button onClick={() => fileInputRef.current.click()} style={{ ...primaryBtn, fontSize: 16, padding: "13px 26px", boxShadow: "var(--shadow)" }}>
                 <Upload size={17} style={{ marginRight: 8 }} /> Upload document pages
               </button>
               <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onUpload} style={{ display: "none" }} />
@@ -205,10 +205,10 @@ export default function Home() {
           <div style={{ maxWidth: 640, margin: "0 auto", padding: "8px 24px 48px" }}>
             <div style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: "18px 20px", marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
-                <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, color: "#8A8F98" }}>PRICING</span>
-                <span style={{ fontFamily: "'Fraunces', serif", fontSize: 26, fontWeight: 600, color: "var(--ink)" }}>${BASE_PRICE.toFixed(2)} <span style={{ fontSize: 14, fontWeight: 400, color: "#8A8F98" }}>base</span></span>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>PRICING</span>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${BASE_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>base</span></span>
               </div>
-              <ul style={{ fontSize: 13, color: "#5B5F6B", lineHeight: 2, paddingLeft: 18, margin: 0 }}>
+              <ul style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 2, paddingLeft: 18, margin: 0 }}>
                 <li>Up to 2 signers, unlimited fields, up to 10 pages — ${BASE_PRICE.toFixed(2)}</li>
                 <li>Each additional block of 10 pages — +${BASE_PRICE.toFixed(2)}</li>
                 <li>Each signer beyond 2 — +${BASE_PRICE.toFixed(2)} per 10-page block</li>
@@ -223,8 +223,8 @@ export default function Home() {
               ].map((c, i) => (
                 <div key={i} style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16 }}>
                   <div style={{ color: "var(--accent)", marginBottom: 8 }}>{c.icon}</div>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontWeight: 600, fontSize: 14.5, marginBottom: 4, color: "var(--ink)" }}>{c.t}</div>
-                  <div style={{ fontSize: 12.5, color: "#5B5F6B", lineHeight: 1.4 }}>{c.d}</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 4, color: "var(--ink)" }}>{c.t}</div>
+                  <div style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 1.4 }}>{c.d}</div>
                 </div>
               ))}
             </div>
@@ -239,7 +239,7 @@ export default function Home() {
 
           <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFF8E8", border: "1px solid #F4B942", borderRadius: 8, padding: "10px 12px", margin: "16px 0" }}>
             <AlertTriangle size={15} color="#946B00" style={{ flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 11.5, color: "#6B5000", lineHeight: 1.45, margin: 0 }}>
+            <p style={{ fontSize: 16, color: "#6B5000", lineHeight: 1.45, margin: 0 }}>
               The U.S. ESIGN Act doesn't cover every document type — don't use this for wills or testamentary
               trusts, family law matters (divorce, adoption), court orders, eviction/foreclosure/repossession
               notices, utility cancellation notices, health or life insurance cancellations, product recalls,
@@ -248,20 +248,20 @@ export default function Home() {
           </div>
 
           <div style={{ display: "flex", gap: 10, margin: "16px 0" }}>
-            <input value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Your name (shown to signers)" style={{ ...inputStyle, fontFamily: "'Public Sans', sans-serif" }} />
-            <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="Your email (for completion notice)" style={{ ...inputStyle, fontFamily: "'Public Sans', sans-serif" }} />
+            <input value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Your name (shown to signers)" style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
+            <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="Your email (for completion notice)" style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>
             <button disabled={pageIdx === 0} onClick={() => setPageIdx((i) => i - 1)} style={{ ...iconBtn, opacity: pageIdx === 0 ? 0.3 : 1 }}><ChevronLeft size={18} /></button>
-            <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#5B5F6B" }}>page {pageIdx + 1} of {pages.length}</span>
+            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#5B5F6B" }}>page {pageIdx + 1} of {pages.length}</span>
             <button disabled={pageIdx === pages.length - 1} onClick={() => setPageIdx((i) => i + 1)} style={{ ...iconBtn, opacity: pageIdx === pages.length - 1 ? 0.3 : 1 }}><ChevronRight size={18} /></button>
             <button onClick={() => addPageInputRef.current.click()} style={{ ...chipBtn, marginLeft: "auto" }}><Plus size={13} /> Add page</button>
             <input ref={addPageInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onAddPages} style={{ display: "none" }} />
           </div>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", padding: 12, marginBottom: 14 }}>
-            <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, color: "#8A8F98", marginBottom: 10 }}>SIGNERS</div>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98", marginBottom: 10 }}>SIGNERS</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {signers.map((s) => (
                 <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -275,7 +275,7 @@ export default function Home() {
                     <input
                       value={s.name} onClick={() => setActiveSignerId(s.id)}
                       onChange={(e) => renameSigner(s.id, e.target.value)}
-                      style={{ border: "none", background: "transparent", fontSize: 12.5, width: Math.max(56, s.name.length * 7), color: activeSignerId === s.id ? "#fff" : "#102A43" }}
+                      style={{ border: "none", background: "transparent", fontSize: 16, width: Math.max(56, s.name.length * 7), color: activeSignerId === s.id ? "#fff" : "#102A43" }}
                     />
                     {signers.length > 1 && (
                       <button onPointerDown={(e) => e.stopPropagation()} onClick={(e) => { e.stopPropagation(); removeSigner(s.id); }} style={{ border: "none", background: "none", cursor: "pointer", padding: 0, lineHeight: 0 }}>
@@ -283,14 +283,14 @@ export default function Home() {
                       </button>
                     )}
                   </div>
-                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, fontFamily: "'IBM Plex Mono', monospace", color: "#5B5F6B", cursor: "pointer" }}>
+                  <label style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#5B5F6B", cursor: "pointer" }}>
                     <input type="checkbox" checked={s.isSelf} onChange={() => toggleSelf(s.id)} /> this is me
                   </label>
                   {!s.isSelf && (
                     <input
                       value={s.email} onChange={(e) => emailSigner(s.id, e.target.value)}
                       placeholder="email address"
-                      style={{ ...inputStyle, flex: "1 1 160px", padding: "5px 8px", fontSize: 12 }}
+                      style={{ ...inputStyle, flex: "1 1 160px", padding: "5px 8px", fontSize: 16 }}
                     />
                   )}
                 </div>
@@ -311,15 +311,15 @@ export default function Home() {
               <FieldTag key={f.id} field={f} signer={signers.find((s) => s.id === f.signerId)} onDrag={dragField} onRemove={removeField} containerRef={containerRef} />
             ))}
           </div>
-          <p style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "#8A8F98", marginTop: 10 }}>drag tags onto the exact spot · fields carry over per page</p>
+          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98", marginTop: 10 }}>drag tags onto the exact spot · fields carry over per page</p>
 
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#fff", borderTop: "1px solid var(--line)", padding: "12px 16px" }}>
             <div style={{ maxWidth: 608, margin: "0 auto" }}>
-              {checkoutError && <p style={{ color: "#C1440E", fontSize: 12, marginBottom: 8 }}>{checkoutError}</p>}
+              {checkoutError && <p style={{ color: "#C1440E", fontSize: 16, marginBottom: 8 }}>{checkoutError}</p>}
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <div style={{ fontFamily: "'Fraunces', serif", fontSize: 19, fontWeight: 600 }}>${price.total.toFixed(2)}</div>
-                  <div style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 10.5, color: "#8A8F98" }}>{signers.length} signer{signers.length > 1 ? "s" : ""} · {fields.length} field{fields.length !== 1 ? "s" : ""} · {pages.length} page{pages.length !== 1 ? "s" : ""}</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 19, fontWeight: 700 }}>${price.total.toFixed(2)}</div>
+                  <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98" }}>{signers.length} signer{signers.length > 1 ? "s" : ""} · {fields.length} field{fields.length !== 1 ? "s" : ""} · {pages.length} page{pages.length !== 1 ? "s" : ""}</div>
                 </div>
                 <button disabled={!readyToCreate || submitting} onClick={startCheckout} style={{ ...primaryBtn, opacity: readyToCreate ? 1 : 0.4 }}>
                   {submitting ? <Loader2 size={16} className="spin" style={{ marginRight: 6 }} /> : null}
@@ -340,9 +340,9 @@ function TopBar({ sub, envId }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Logo size={22} />
-        {envId && <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, letterSpacing: 1.5, color: "#8A8F98" }}>{envId}</span>}
+        {envId && <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>{envId}</span>}
       </div>
-      <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "var(--accent)" }}>{sub}</span>
+      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "var(--accent)" }}>{sub}</span>
     </div>
   );
 }
