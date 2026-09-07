@@ -14,6 +14,8 @@ export default function RootLayout({ children }) {
           href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Caveat:wght@500;600;700&display=swap"
           rel="stylesheet"
         />
+        <link rel="icon" href="/favicon-light.png" media="(prefers-color-scheme: light)" />
+        <link rel="icon" href="/favicon-dark.png" media="(prefers-color-scheme: dark)" />
       </head>
       <body>{children}</body>
     </html>
