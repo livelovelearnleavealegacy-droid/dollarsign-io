@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
 import { createEnvelope } from "@/lib/db";
-import { calcPrice, randTrackingId } from "@/lib/shared";
+import { calcPrice, randTrackingId, MAX_PAGES, MAX_SIGNERS } from "@/lib/shared";
 import { clientIp, clientUserAgent } from "@/lib/request";
 
 export async function POST(req) {
@@ -15,13 +15,23 @@ export async function POST(req) {
     return NextResponse.json({ error: "at least one signer is required" }, { status: 400 });
   }
 
+  // Hard limits are enforced here, server-side — never trust the client's
+  // own page/signer counts, since someone could bypass the UI entirely
+  // and hit this endpoint directly.
+  if (pages.length > MAX_PAGES) {
+    return NextResponse.json({ error: `this plan supports up to ${MAX_PAGES} pages` }, { status: 400 });
+  }
+  if (signers.length > MAX_SIGNERS) {
+    return NextResponse.json({ error: `this plan supports up to ${MAX_SIGNERS} signers` }, { status: 400 });
+  }
+
   const id = randomUUID();
   const trackingId = randTrackingId();
 
-  // Price is computed here, server-side, from the actual page count and
-  // signer count — never trusted from the client. This is what Stripe
-  // will charge, so a client sending a fabricated price can't matter.
-  const price = calcPrice(signers, pages.length);
+  // Flat pricing — every envelope costs the same as long as it's within
+  // the caps checked above. Computed here, server-side, so a tampered
+  // client request can't change what Stripe actually charges.
+  const price = calcPrice();
 
   // Status starts as pending_payment: no emails go out and nothing is
   // considered "sent" until the Stripe webhook confirms a real charge.
