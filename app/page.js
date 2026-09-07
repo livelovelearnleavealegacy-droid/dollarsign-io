@@ -30,85 +30,85 @@ export default function Home() {
   const fileInputRef = useRef(null);
   const addPageInputRef = useRef(null);
 
-const uploadPage = async (blob, mime, w, h) => {
-  const formData = new FormData();
-  formData.append("file", blob, `page.${mime.split("/")[1]}`);
-  formData.append("width", w);
-  formData.append("height", h);
-  const res = await fetch("/api/pages", { method: "POST", body: formData });
-  if (!res.ok) throw new Error("Failed to upload a page. Please try again.");
-  const { id } = await res.json();
-  return { id, src: `/api/pages/${id}`, w, h };
-};
+  const uploadPage = async (blob, mime, w, h) => {
+    const formData = new FormData();
+    formData.append("file", blob, `page.${mime.split("/")[1]}`);
+    formData.append("width", w);
+    formData.append("height", h);
+    const res = await fetch("/api/pages", { method: "POST", body: formData });
+    if (!res.ok) throw new Error("Failed to upload a page. Please try again.");
+    const { id } = await res.json();
+    return { id, src: `/api/pages/${id}`, w, h };
+  };
 
-const fileToImagePage = (file) =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const img = new Image();
-      img.onload = () => {
-        uploadPage(file, file.type, img.naturalWidth, img.naturalHeight)
-          .then((page) => resolve([page]))
-          .catch(reject);
+  const fileToImagePage = (file) =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          uploadPage(file, file.type, img.naturalWidth, img.naturalHeight)
+            .then((page) => resolve([page]))
+            .catch(reject);
+        };
+        img.onerror = reject;
+        img.src = reader.result;
       };
-      img.onerror = reject;
-      img.src = reader.result;
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-
-const fileToPdfPages = async (file) => {
-  const pdfjsLib = await import("pdfjs-dist");
-  pdfjsLib.GlobalWorkerOptions.workerSrc =
-    `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
-
-  const buf = await file.arrayBuffer();
-  const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-  const pages = [];
-
-const onUpload = (e) => {
-  if (!e.target.files?.length) return;
-  loadFiles(e.target.files, (newPages) => {
-    setPages(newPages);
-    setPageIdx(0);
-    setActiveSignerId(signers[0].id);
-    setStep("editor");
-  });
-};
-
-const onAddPages = (e) => {
-  if (!e.target.files?.length) return;
-  loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]));
-};
-  
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const viewport = page.getViewport({ scale: 2 });
-    const canvas = document.createElement("canvas");
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    const ctx = canvas.getContext("2d");
-    await page.render({ canvasContext: ctx, viewport }).promise;
-
-    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-    pages.push(await uploadPage(blob, "image/jpeg", canvas.width, canvas.height));
-  }
-  return pages;
-};
-
-const loadFiles = (fileList, cb) => {
-  const files = Array.from(fileList);
-  Promise.all(
-    files.map((f) => (f.type === "application/pdf" ? fileToPdfPages(f) : fileToImagePage(f)))
-  )
-    .then((pageArrays) => cb(pageArrays.flat()))
-    .catch((err) => {
-      console.error(err);
-      alert("Something went wrong uploading your document. Please try again.");
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
-};
-  
+
+  const fileToPdfPages = async (file) => {
+    const pdfjsLib = await import("pdfjs-dist");
+    pdfjsLib.GlobalWorkerOptions.workerSrc =
+      `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
+
+    const buf = await file.arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
+    const pages = [];
+
+    for (let i = 1; i <= pdf.numPages; i++) {
+      const page = await pdf.getPage(i);
+      const viewport = page.getViewport({ scale: 2 });
+      const canvas = document.createElement("canvas");
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const ctx = canvas.getContext("2d");
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
+      pages.push(await uploadPage(blob, "image/jpeg", canvas.width, canvas.height));
+    }
+    return pages;
+  };
+
+  const loadFiles = (fileList, cb) => {
+    const files = Array.from(fileList);
+    Promise.all(
+      files.map((f) => (f.type === "application/pdf" ? fileToPdfPages(f) : fileToImagePage(f)))
+    )
+      .then((pageArrays) => cb(pageArrays.flat()))
+      .catch((err) => {
+        console.error(err);
+        alert("Something went wrong uploading your document. Please try again.");
+      });
+  };
+
+  const onUpload = (e) => {
+    if (!e.target.files?.length) return;
+    loadFiles(e.target.files, (newPages) => {
+      setPages(newPages);
+      setPageIdx(0);
+      setActiveSignerId(signers[0].id);
+      setStep("editor");
+    });
+  };
+
+  const onAddPages = (e) => {
+    if (!e.target.files?.length) return;
+    loadFiles(e.target.files, (newPages) => setPages((p) => [...p, ...newPages]));
+  };
+
   const addSigner = () => {
     setSigners((s) => [...s, { id: uid(), name: `Signer ${s.length + 1}`, email: "", color: SIGNER_COLORS[s.length % SIGNER_COLORS.length], isSelf: false }]);
   };
@@ -257,7 +257,7 @@ const loadFiles = (fileList, cb) => {
             <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 12, color: "#5B5F6B" }}>page {pageIdx + 1} of {pages.length}</span>
             <button disabled={pageIdx === pages.length - 1} onClick={() => setPageIdx((i) => i + 1)} style={{ ...iconBtn, opacity: pageIdx === pages.length - 1 ? 0.3 : 1 }}><ChevronRight size={18} /></button>
             <button onClick={() => addPageInputRef.current.click()} style={{ ...chipBtn, marginLeft: "auto" }}><Plus size={13} /> Add page</button>
-          <input ref={addPageInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onAddPages} style={{ display: "none" }} />
+            <input ref={addPageInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onAddPages} style={{ display: "none" }} />
           </div>
 
           <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", padding: 12, marginBottom: 14 }}>
