@@ -182,9 +182,8 @@ export default function Home() {
         <div>
           <div style={{ padding: "72px 24px 56px", textAlign: "center" }}>
             <div style={{ maxWidth: 560, margin: "0 auto" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 14 }}>
-                <Logo size={36} />
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, color: "var(--ink)" }}>DollarSign<span style={{ color: "var(--teal)" }}>.io</span></span>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+                <img src="/wordmark.png" alt="DollarSign.io" style={{ height: 56, width: "auto" }} />
               </div>
               <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98", margin: "0 0 34px" }}>
                 Pay as you go. Sign with confidence.
@@ -340,9 +339,9 @@ function TopBar({ sub, envId }) {
     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
         <Logo size={22} />
-        {envId && <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>{envId}</span>}
+        {envId && <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, letterSpacing: 1.5, color: "#8A8F98" }}>{envId}</span>}
       </div>
-      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "var(--accent)" }}>{sub}</span>
+      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: "var(--accent)" }}>{sub}</span>
     </div>
   );
 }
