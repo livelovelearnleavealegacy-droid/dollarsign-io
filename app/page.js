@@ -234,7 +234,7 @@ export default function Home() {
               {[
                 { icon: <FileText size={16} />, t: "Generous Pages and Signers", d: `Up to ${MAX_PAGES} pages with up to ${MAX_SIGNERS} signers per envelope.` },
                 { icon: <PenTool size={16} />, t: "Draw or Type", d: "Each signer receives their own emailed link, signs in their own hand, or types a name." },
-                { icon: <Download size={16} />, t: Yours to Keep", d: "Final, signed document delivered to all signers by email, ready to download." },
+                { icon: <Download size={16} />, t: "Yours to Keep", d: "Final, signed document delivered to all signers by email, ready to download." },
                 { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit cards processed by Strip. We never have your credit card information.` },
               ].map((c, i) => (
                 <div key={i} style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16 }}>
