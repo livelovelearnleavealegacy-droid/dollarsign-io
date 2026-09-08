@@ -1,7 +1,6 @@
 "use client";
 import { useState } from "react";
 import { Mail, ArrowRight, Loader2, CheckCircle2 } from "lucide-react";
-import Logo from "@/components/Logo";
 import { primaryBtn, inputStyle } from "@/lib/shared";
 
 export default function FindMyDocument() {
@@ -32,7 +31,6 @@ export default function FindMyDocument() {
 
   return (
     <div style={{ maxWidth: 440, margin: "0 auto", padding: "80px 20px", textAlign: "center" }}>
-      <Logo size={44} />
       <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 26, margin: "20px 0 10px", color: "var(--ink)" }}>
         Find my document
       </h1>
@@ -60,7 +58,7 @@ export default function FindMyDocument() {
               style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif", paddingLeft: 38 }}
             />
           </div>
-          {error && <p style={{ color: "#C1440E", fontSize: 14, margin: 0 }}>{error}</p>}
+          {error && <p style={{ color: "#C1440E", fontSize: 16, margin: 0 }}>{error}</p>}
           <button type="submit" disabled={submitting} style={{ ...primaryBtn, opacity: submitting ? 0.6 : 1 }}>
             {submitting ? <Loader2 size={16} className="spin" style={{ marginRight: 6 }} /> : null}
             {submitting ? "Sending…" : "Send me the links"}
