@@ -1,18 +1,9 @@
-import Logo from "@/components/Logo";
-
 // Shared shell for the plain-text policy pages (terms, privacy, FAQ).
 // Keeps one copy of the reading-column width and typographic scale so
 // the three pages can't drift apart visually.
 export default function LegalPage({ title, updated, intro, children }) {
   return (
     <div style={{ maxWidth: 680, margin: "0 auto", padding: "48px 20px 24px" }}>
-      <a href="/" style={{ display: "inline-flex", alignItems: "center", gap: 8, textDecoration: "none", marginBottom: 28 }}>
-        <Logo size={30} />
-        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 17, color: "var(--ink)" }}>
-          DollarSign<span style={{ color: "var(--teal)" }}>.io</span>
-        </span>
-      </a>
-
       <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 30, lineHeight: 1.2, margin: "0 0 8px", color: "var(--ink)" }}>
         {title}
       </h1>
