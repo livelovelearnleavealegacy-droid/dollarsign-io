@@ -7,7 +7,7 @@ import { clientIp, clientUserAgent } from "@/lib/request";
 // requires consent be obtained separately, not bundled into the act
 // of signing.
 export async function POST(req, { params }) {
-  const body = await req.json();
+  const body = await req.json().catch(() => ({}));
   const { signerId } = body;
   if (!signerId) return NextResponse.json({ error: "signerId is required" }, { status: 400 });
 
@@ -17,8 +17,35 @@ export async function POST(req, { params }) {
     return NextResponse.json({ error: "this envelope hasn't been paid for yet" }, { status: 402 });
   }
 
+  // Terminal envelopes take no further audit events. Without this,
+  // anyone holding a signing link could append consent events to a
+  // finished document forever — each one stamped with their own IP and
+  // timestamp, on the very record the Certificate of Completion is
+  // built from. Same failure mode as the replayed-signature bug.
+  if (envelope.status === "completed") {
+    return NextResponse.json({ error: "this envelope is already complete" }, { status: 409 });
+  }
+  if (envelope.status === "declined") {
+    return NextResponse.json({ error: "a signer declined this envelope" }, { status: 409 });
+  }
+  if (envelope.status === "voided") {
+    return NextResponse.json({ error: "the sender voided this envelope" }, { status: 409 });
+  }
+
   const signer = envelope.signers.find((s) => s.id === signerId);
   if (!signer) return NextResponse.json({ error: "signer not found" }, { status: 404 });
+
+  // Consent happens once per signer. Re-posting is a no-op rather than
+  // an error: the signing page can retry safely, and a refreshed tab
+  // won't add a duplicate. The FIRST consent is the one with
+  // evidentiary meaning, so it must never be overwritten or joined by
+  // near-identical siblings at different timestamps.
+  const already = (envelope.auditLog || []).some(
+    (e) => e.type === "consent" && e.signerId === signerId
+  );
+  if (already) {
+    return NextResponse.json({ envelope, alreadyConsented: true });
+  }
 
   const updated = appendAuditEvent(params.id, {
     type: "consent",
