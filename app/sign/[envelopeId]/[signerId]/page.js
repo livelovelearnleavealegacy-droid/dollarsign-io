@@ -1,12 +1,11 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, ChevronRight, Lock, PenTool, CalendarDays, Type } from "lucide-react";
-import Logo from "@/components/Logo";
+import { Check, ChevronLeft, ChevronRight, Lock, PenTool, CalendarDays, Type, XCircle } from "lucide-react";
 import Seal from "@/components/Seal";
 import SignaturePad from "@/components/SignaturePad";
 import TextFieldPad from "@/components/TextFieldPad";
 import ConsentScreen from "@/components/ConsentScreen";
-import { todayStr, primaryBtn, iconBtn } from "@/lib/shared";
+import { todayStr, primaryBtn, iconBtn, inputStyle, ov } from "@/lib/shared";
 
 export default function SignPage({ params }) {
   const { envelopeId, signerId } = params;
@@ -22,6 +21,13 @@ export default function SignPage({ params }) {
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState(null);
   const [done, setDone] = useState(false);
+
+  // Decline flow
+  const [showDecline, setShowDecline] = useState(false);
+  const [declineReason, setDeclineReason] = useState("");
+  const [declining, setDeclining] = useState(false);
+  const [declineError, setDeclineError] = useState(null);
+  const [declined, setDeclined] = useState(false);
 
   useEffect(() => {
     fetch(`/api/envelopes/${envelopeId}`)
@@ -46,6 +52,19 @@ export default function SignPage({ params }) {
 
   if (envelope.status === "pending_payment") {
     return <StatusScreen title="Not ready yet" message="This envelope's payment hasn't been confirmed yet. Try this link again in a moment." />;
+  }
+
+  if (declined || envelope.status === "declined") {
+    return (
+      <StatusScreen
+        title="Signing declined"
+        message="This document was declined and can no longer be signed. Everyone on the envelope has been notified."
+      />
+    );
+  }
+
+  if (envelope.status === "completed") {
+    return <StatusScreen title="Already complete" message="Every signer has finished this envelope. Check your email for the completed document." />;
   }
 
   // ESIGN requires consent be obtained separately from, and before, the
@@ -108,23 +127,46 @@ export default function SignPage({ params }) {
     }
   };
 
+  const confirmDecline = async () => {
+    setDeclining(true);
+    setDeclineError(null);
+    try {
+      const res = await fetch(`/api/envelopes/${envelopeId}/decline`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signerId, reason: declineReason || null }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || "Couldn't record your decline.");
+      }
+      setShowDecline(false);
+      setDeclined(true);
+    } catch (err) {
+      setDeclineError(err.message);
+    } finally {
+      setDeclining(false);
+    }
+  };
+
   if (done) {
     return (
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "60px 20px", textAlign: "center" }}>
         <Seal label="SIGNED" date={todayStr()} size={110} />
         <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 600, margin: "18px 0 6px", color: "var(--ink)" }}>You're all set</h2>
-        <p style={{ color: "#5B5F6B", fontSize: 16 }}>Your part of tracking {envelope.trackingId} is complete.</p>
+        <p style={{ color: "#5B5F6B", fontSize: 16 }}>
+          Your part of {envelope.documentName ? `${envelope.documentName} (${envelope.trackingId})` : `tracking ${envelope.trackingId}`} is complete.
+        </p>
       </div>
     );
   }
 
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 190px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <Logo size={22} />
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>{envelope.trackingId}</span>
-        </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
+        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>
+          {envelope.documentName || envelope.trackingId}
+        </span>
         <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: signer.color }}>signing as {signer.name}</span>
       </div>
 
@@ -184,6 +226,19 @@ export default function SignPage({ params }) {
         </p>
       )}
 
+      {/* Declining has to be a real, visible option. A signer with no way
+          out just abandons the link, and the sender waits forever without
+          ever learning why. */}
+      <p style={{ marginTop: 18, textAlign: "center" }}>
+        <button
+          type="button"
+          onClick={() => setShowDecline(true)}
+          style={{ border: "none", background: "none", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98", textDecoration: "underline", display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          <XCircle size={14} /> I don't want to sign this
+        </button>
+      </p>
+
       <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#fff", borderTop: "1px solid var(--line)", padding: "14px 16px" }}>
         <div style={{ maxWidth: 608, margin: "0 auto" }}>
           <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 10, cursor: "pointer" }}>
@@ -208,6 +263,47 @@ export default function SignPage({ params }) {
         </div>
       </div>
 
+      {showDecline && (
+        <div style={ov.backdrop}>
+          <div style={ov.card}>
+            <div style={ov.headRow}>
+              <h3 style={ov.title}>Decline to sign?</h3>
+            </div>
+            <p style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 1.5, marginTop: 0 }}>
+              This ends the envelope for everyone. No one else will be able to sign it, and the sender and the
+              other signers will be told you declined. This can't be undone.
+            </p>
+            <textarea
+              value={declineReason}
+              onChange={(e) => setDeclineReason(e.target.value)}
+              placeholder="Reason (optional — shared with the sender)"
+              maxLength={500}
+              rows={3}
+              style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif", resize: "vertical", marginBottom: 12 }}
+            />
+            {declineError && <p style={{ color: "#C1440E", fontSize: 16, margin: "0 0 10px" }}>{declineError}</p>}
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => setShowDecline(false)}
+                disabled={declining}
+                style={{ flex: 1, border: "1px solid var(--line)", background: "#fff", borderRadius: 7, padding: "11px 14px", fontSize: 16, color: "#5B5F6B", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                Keep signing
+              </button>
+              <button
+                type="button"
+                onClick={confirmDecline}
+                disabled={declining}
+                style={{ flex: 1, border: "none", background: "#C1440E", color: "#fff", borderRadius: 7, padding: "11px 14px", fontSize: 16, fontWeight: 600, cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif", opacity: declining ? 0.6 : 1 }}
+              >
+                {declining ? "Declining…" : "Decline"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showSignPad && <SignaturePad onConfirm={applySignature} onCancel={() => setShowSignPad(false)} />}
       {showTextPad && <TextFieldPad label="title" onConfirm={applyText} onCancel={() => setShowTextPad(false)} />}
     </div>
@@ -217,8 +313,7 @@ export default function SignPage({ params }) {
 function StatusScreen({ title, message }) {
   return (
     <div style={{ maxWidth: 420, margin: "0 auto", padding: "80px 20px", textAlign: "center" }}>
-      <Logo size={40} />
-      <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 600, margin: "16px 0 6px", color: "var(--ink)" }}>{title}</h2>
+      <h2 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 20, fontWeight: 600, margin: "0 0 6px", color: "var(--ink)" }}>{title}</h2>
       <p style={{ color: "#5B5F6B", fontSize: 16 }}>{message}</p>
     </div>
   );
