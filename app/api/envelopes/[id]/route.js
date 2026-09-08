@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getEnvelope, updateEnvelopeFields } from "@/lib/db";
+import { getEnvelope, updateEnvelopeFields, computeDocumentHash, setDocumentHash } from "@/lib/db";
 import { sendTurnNotice, sendCompletionNotice } from "@/lib/email";
 import { clientIp, clientUserAgent } from "@/lib/request";
 
@@ -20,8 +20,8 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ error: "this envelope hasn't been paid for yet" }, { status: 402 });
   }
 
-  // Signing is not replayable. Without these two checks, anyone holding
-  // a signing link can re-submit after the fact: each replay appends
+  // Signing is not replayable. Without these checks, anyone holding a
+  // signing link can re-submit after the fact: each replay appends
   // another "signed" event to the audit log with a fresh timestamp and
   // IP, and — on a completed envelope — re-sends the completion email
   // to every party. The audit trail is the evidentiary value of this
@@ -29,6 +29,9 @@ export async function PATCH(req, { params }) {
   // email. Mirrors the idempotency guard in finalizeEnvelopePayment.
   if (before.status === "completed") {
     return NextResponse.json({ error: "this envelope is already complete" }, { status: 409 });
+  }
+  if (before.status === "declined") {
+    return NextResponse.json({ error: "a signer declined this envelope, so it can't be signed" }, { status: 409 });
   }
 
   const priorFields = before.fields.filter((f) => f.signerId === signerId);
@@ -71,7 +74,24 @@ export async function PATCH(req, { params }) {
     reviewedAllPages: true,
   };
 
-  const updated = updateEnvelopeFields(params.id, fields, auditEvent);
+  let updated = updateEnvelopeFields(params.id, fields, auditEvent);
+
+  // The document fingerprint is computed here, server-side, from the
+  // page files actually on disk plus the final field values — once,
+  // at the moment of completion, and then stored. It used to be
+  // recomputed in each viewer's browser from canvas output, which meant
+  // two people could see two different hashes for the same document and
+  // nothing authoritative existed to compare against.
+  if (updated.status === "completed" && !updated.documentHash) {
+    try {
+      const withHash = setDocumentHash(params.id, computeDocumentHash(updated));
+      if (withHash) updated = withHash;
+    } catch (err) {
+      // A missing page file shouldn't cost the signer their signature —
+      // the fields are already saved. Record it and carry on unhashed.
+      console.error("document hash failed:", err);
+    }
+  }
 
   // Figure out signing order from the signers array and notify whoever is next.
   const order = updated.signers.map((s) => s.id);
@@ -100,6 +120,7 @@ export async function PATCH(req, { params }) {
             senderName: updated.senderName,
             envelopeId: params.id,
             trackingId: updated.trackingId,
+            documentName: updated.documentName,
           })
         )
       );
@@ -118,6 +139,7 @@ export async function PATCH(req, { params }) {
         envelopeId: params.id,
         signerId: nextSigner.id,
         trackingId: updated.trackingId,
+        documentName: updated.documentName,
       });
     }
   } catch (err) {
