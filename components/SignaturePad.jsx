@@ -67,13 +67,13 @@ export default function SignaturePad({ onConfirm, onCancel }) {
               style={{ width: "100%", height: 150, background: "#fff", border: "1.5px dashed var(--line)", borderRadius: 6, touchAction: "none", cursor: "crosshair" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-              <span style={{ fontFamily: "'IBM Plex Mono', monospace", fontSize: 11, color: "#8A8F98" }}>sign above the line</span>
+              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98" }}>sign above the line</span>
               <button onClick={clear} style={linkBtn}><RotateCcw size={12} style={{ marginRight: 4 }} />clear</button>
             </div>
           </>
         ) : (
           <div>
-            <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type your full name" style={{ ...inputStyle, fontSize: 15 }} />
+            <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type your full name" style={{ ...inputStyle, fontSize: 16 }} />
             <div style={{ marginTop: 14, padding: "18px 12px", background: "#fff", border: "1.5px dashed var(--line)", borderRadius: 6, textAlign: "center" }}>
               <span style={{ fontFamily: "'Caveat', cursive", fontSize: 34, color: "#102A43" }}>{typed || "Your signature"}</span>
             </div>
