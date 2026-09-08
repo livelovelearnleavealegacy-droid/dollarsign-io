@@ -326,11 +326,7 @@ export default function Home() {
           </div>
 
           <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 400, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 12px" }}>
-            Complete &ldquo;Document name,&rdquo; &ldquo;Your name,&rdquo; and &ldquo;Your email.&rdquo; Select &ldquo;Signer.&rdquo;
-            Select &ldquo;&lt;&rdquo; or &ldquo;&gt;&rdquo; until you are on the page where you want the fields located.
-            Select &ldquo;this is me&rdquo; or add &ldquo;email address.&rdquo; Click &ldquo;Signature field,&rdquo;
-            &ldquo;Date field&rdquo; or &ldquo;Text field.&rdquo; Scroll down to find them, then drag fields where desired.
-            Repeat for all signers and fields. Larger files take longer to load.
+           Complete fields above and locate page where you want to place signatures. Select signer then click desired fields. Scroll down to find fields and drag them to desired location. Larger documents take longer to load.
           </p>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
