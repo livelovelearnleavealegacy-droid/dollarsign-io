@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail } from "lucide-react";
+import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail, Ban } from "lucide-react";
 import Seal from "@/components/Seal";
 import { todayStr } from "@/lib/shared";
 import { buildFinalPages, hashPages, buildCertificatePage, buildFinalPdf } from "@/lib/compositePages";
@@ -19,6 +19,11 @@ export default function EnvelopeStatusPage({ params }) {
   //   resendMsg[signerId] = { ok: boolean, text: string } after it lands
   const [resending, setResending] = useState({});
   const [resendMsg, setResendMsg] = useState({});
+
+  // Void is a two-step flow: this only asks for the confirmation email.
+  // Nothing is cancelled until the sender clicks the link in it.
+  const [voidRequesting, setVoidRequesting] = useState(false);
+  const [voidMsg, setVoidMsg] = useState(null);
 
   useEffect(() => {
     fetch(`/api/envelopes/${id}`)
@@ -75,6 +80,21 @@ export default function EnvelopeStatusPage({ params }) {
     }
   };
 
+  const requestVoid = async () => {
+    setVoidRequesting(true);
+    setVoidMsg(null);
+    try {
+      const res = await fetch(`/api/envelopes/${id}/void-request`, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't start the void.");
+      setVoidMsg({ ok: true, text: `Confirmation link sent to ${data.sentTo}. Open it to finish voiding — nothing has changed yet.` });
+    } catch (err) {
+      setVoidMsg({ ok: false, text: err.message });
+    } finally {
+      setVoidRequesting(false);
+    }
+  };
+
   if (error) return <Centered><h2 style={h2}>Can't find that envelope</h2><p style={p}>{error}</p></Centered>;
   if (!envelope) return <Centered><h2 style={h2}>Loading…</h2></Centered>;
 
@@ -83,7 +103,8 @@ export default function EnvelopeStatusPage({ params }) {
     return theirs.length > 0 && theirs.every((f) => f.value);
   };
 
-  const anyPending = envelope.status !== "completed" && envelope.status !== "declined" && envelope.signers.some(
+  const isTerminal = ["completed", "declined", "voided"].includes(envelope.status);
+  const anyPending = !isTerminal && envelope.signers.some(
     (s) => !signerStatus(s) && s.email && !s.isSelf
   );
 
@@ -95,6 +116,8 @@ export default function EnvelopeStatusPage({ params }) {
           ? "Envelope completed"
           : envelope.status === "declined"
           ? "Signing declined"
+          : envelope.status === "voided"
+          ? "Envelope voided"
           : "Waiting on signers"}
       </h2>
       {envelope.documentName && (
@@ -115,10 +138,23 @@ export default function EnvelopeStatusPage({ params }) {
         );
       })()}
 
+      {envelope.status === "voided" && (() => {
+        const ev = (envelope.auditLog || []).find((e) => e.type === "voided");
+        return (
+          <div style={{ background: "#FDF3F0", border: "1px solid #E7BCAE", borderRadius: 10, padding: "14px 16px", textAlign: "left", marginBottom: 20 }}>
+            <p style={{ fontSize: 16, color: "#8A3212", lineHeight: 1.5, margin: 0 }}>
+              The sender voided this envelope, so every signing link stopped working and it can never be
+              completed.
+              {ev?.reason ? <><br /><br />Reason given: &ldquo;{ev.reason}&rdquo;</> : null}
+            </p>
+          </div>
+        );
+      })()}
+
       <div style={{ background: "#fff", boxShadow: "var(--shadow)", borderRadius: 10, padding: 16, textAlign: "left", marginBottom: anyPending ? 12 : 24 }}>
         {envelope.signers.map((s) => {
           const complete = signerStatus(s);
-          const canResend = !complete && !!s.email && !s.isSelf && envelope.status !== "completed" && envelope.status !== "declined";
+          const canResend = !complete && !!s.email && !s.isSelf && !isTerminal;
           const msg = resendMsg[s.id];
           return (
             <div key={s.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
@@ -170,6 +206,35 @@ export default function EnvelopeStatusPage({ params }) {
         </p>
       )}
 
+      {envelope.status === "sent" && (
+        <div style={{ borderTop: "1px solid var(--line)", paddingTop: 18, marginBottom: 24, textAlign: "left" }}>
+          {voidMsg ? (
+            <p style={{ fontSize: 16, lineHeight: 1.5, margin: 0, color: voidMsg.ok ? "#4E8B5A" : "#C1440E" }}>
+              {voidMsg.text}
+            </p>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, color: "#8A8F98", lineHeight: 1.5, margin: "0 0 8px" }}>
+                Sent this to the wrong person, or need to start over? Voiding cancels the envelope and kills
+                every signing link. We'll email the sender a confirmation link first — nothing changes until
+                it's clicked.
+              </p>
+              <button
+                type="button"
+                onClick={requestVoid}
+                disabled={voidRequesting}
+                style={{ ...voidBtn, opacity: voidRequesting ? 0.55 : 1, cursor: voidRequesting ? "default" : "pointer" }}
+              >
+                {voidRequesting
+                  ? <Loader2 size={13} className="spin" style={{ marginRight: 5 }} />
+                  : <Ban size={13} style={{ marginRight: 5 }} />}
+                {voidRequesting ? "Sending…" : "Void this envelope"}
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
       {envelope.status === "completed" && (
         <>
           {building && (
@@ -216,6 +281,13 @@ const dlBtn = { background: "var(--accent)", color: "#fff", borderRadius: 7, pad
 const resendBtn = {
   border: "1px solid var(--line)", background: "#fff", borderRadius: 20,
   padding: "4px 11px", fontSize: 13, color: "#5B5F6B",
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
+  display: "inline-flex", alignItems: "center",
+};
+
+const voidBtn = {
+  border: "1px solid #E7BCAE", background: "#fff", borderRadius: 20,
+  padding: "5px 12px", fontSize: 13, color: "#8A3212",
   fontFamily: "'Plus Jakarta Sans', sans-serif",
   display: "inline-flex", alignItems: "center",
 };

@@ -26,6 +26,9 @@ export async function POST(req, { params }) {
   if (envelope.status === "declined") {
     return NextResponse.json({ error: "this envelope has already been declined" }, { status: 409 });
   }
+  if (envelope.status === "voided") {
+    return NextResponse.json({ error: "the sender voided this envelope" }, { status: 409 });
+  }
 
   const signer = envelope.signers.find((s) => s.id === signerId);
   if (!signer) return NextResponse.json({ error: "signer not found" }, { status: 404 });

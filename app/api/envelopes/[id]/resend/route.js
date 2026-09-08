@@ -30,6 +30,9 @@ export async function POST(req, { params }) {
   if (envelope.status === "declined") {
     return NextResponse.json({ error: "A signer declined this envelope." }, { status: 409 });
   }
+  if (envelope.status === "voided") {
+    return NextResponse.json({ error: "This envelope was voided by the sender." }, { status: 409 });
+  }
   if (envelope.status === "completed") {
     return NextResponse.json({ error: "This envelope is already complete." }, { status: 409 });
   }

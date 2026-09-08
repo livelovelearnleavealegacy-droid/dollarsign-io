@@ -63,6 +63,15 @@ export default function SignPage({ params }) {
     );
   }
 
+  if (envelope.status === "voided") {
+    return (
+      <StatusScreen
+        title="This document was withdrawn"
+        message="The sender voided this envelope, so there is nothing left to sign. If you were expecting to sign it, contact them directly — they may send a corrected version."
+      />
+    );
+  }
+
   if (envelope.status === "completed") {
     return <StatusScreen title="Already complete" message="Every signer has finished this envelope. Check your email for the completed document." />;
   }

@@ -153,8 +153,13 @@ export default function Home() {
   const price = calcPrice();
   const currentPage = pages[pageIdx];
   const pageFields = fields.filter((f) => f.pageId === currentPage?.id);
+  // Sender email is required, not optional. Three things depend on it:
+  // the completion notice, finding the document later, and voiding the
+  // envelope — voiding in particular is impossible without it, since
+  // controlling that address is the only proof of being the sender.
   const readyToCreate =
     pages.length > 0 && fields.length > 0 &&
+    senderEmail.includes("@") &&
     signers.every((s) => s.name.trim() && (s.isSelf || s.email.includes("@")));
 
   // Create the envelope as a pending-payment draft, then hand off to a
@@ -215,7 +220,7 @@ export default function Home() {
                 No subscription. Upload your document, place your signer, date and text fields, pay and send.
               </p>
               <button onClick={() => fileInputRef.current.click()} style={{ ...primaryBtn, fontSize: 16, padding: "13px 26px", boxShadow: "var(--shadow)" }}>
-                <Upload size={17} style={{ marginRight: 8 }} /> Upload document pages
+                <Upload size={17} style={{ marginRight: 8 }} /> Upload Document
               </button>
               <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onUpload} style={{ display: "none" }} />
             </div>
@@ -225,10 +230,10 @@ export default function Home() {
             <div style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: "18px 20px", marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
                 <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>PRICING</span>
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${FLAT_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>flat</span></span>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${FLAT_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>per envelope</span></span>
               </div>
               <ul style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 2, paddingLeft: 18, margin: 0 }}>
-                <li>Flat rate per envelope — ${FLAT_PRICE.toFixed(2)}</li>
+                <li>No subscription. Flat rate per envelope</li>
                 <li>Up to {MAX_SIGNERS} signers</li>
                 <li>Up to {MAX_PAGES} pages</li>
                 <li>Unlimited signature, date, and text fields</li>
@@ -238,8 +243,8 @@ export default function Home() {
               {[
                 { icon: <FileText size={16} />, t: "Generous Capacity", d: `Up to ${MAX_PAGES} pages with up to ${MAX_SIGNERS} signers per envelope.` },
                 { icon: <PenTool size={16} />, t: "Draw or Type", d: "Each person receives their own link to sign or type their name." },
-                { icon: <Download size={16} />, t: "Yours to Keep", d: "Final document delivered to all signers by email, ready to download." },
-                { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit cards processed by Stripe. We never see credit card information.` },
+                { icon: <Download size={16} />, t: "Yours to Keep", d: "Final document delivered to all signers by email. Documents recoverable indefinitely." },
+                { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit card processing done by Stripe. We never see your credit card information.` },
               ].map((c, i) => (
                 <div key={i} style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16 }}>
                   <div style={{ color: "var(--accent)", marginBottom: 8 }}>{c.icon}</div>
@@ -275,7 +280,7 @@ export default function Home() {
 
           <div style={{ display: "flex", gap: 10, margin: "0 0 16px" }}>
             <input value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Your name (shown to signers)" style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
-            <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="Your email (for completion notice)" style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
+            <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="Your email (required — for the completed document)" style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "16px 0" }}>

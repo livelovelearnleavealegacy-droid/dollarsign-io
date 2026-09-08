@@ -33,6 +33,9 @@ export async function PATCH(req, { params }) {
   if (before.status === "declined") {
     return NextResponse.json({ error: "a signer declined this envelope, so it can't be signed" }, { status: 409 });
   }
+  if (before.status === "voided") {
+    return NextResponse.json({ error: "the sender voided this envelope, so it can't be signed" }, { status: 409 });
+  }
 
   const priorFields = before.fields.filter((f) => f.signerId === signerId);
   if (priorFields.length > 0 && priorFields.every((f) => f.value)) {
