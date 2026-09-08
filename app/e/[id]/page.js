@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail } from "lucide-react";
-import Logo from "@/components/Logo";
 import Seal from "@/components/Seal";
 import { todayStr } from "@/lib/shared";
 import { buildFinalPages, hashPages, buildCertificatePage, buildFinalPdf } from "@/lib/compositePages";
@@ -35,7 +34,11 @@ export default function EnvelopeStatusPage({ params }) {
       (async () => {
         try {
           const finalPages = await buildFinalPages(envelope.pages, envelope.fields);
-          const hash = await hashPages(finalPages);
+          // Prefer the fingerprint the server computed and stored at
+          // completion. The client-side fallback only exists for
+          // envelopes completed before that was added — it is not
+          // reproducible across browsers, which is why it was replaced.
+          const hash = envelope.documentHash || (await hashPages(finalPages));
           const certificate = await buildCertificatePage(envelope, hash);
           const pdfBlob = await buildFinalPdf(finalPages, certificate);
           setDocumentHash(hash);
@@ -72,32 +75,50 @@ export default function EnvelopeStatusPage({ params }) {
     }
   };
 
-  if (error) return <Centered><Logo size={40} /><h2 style={h2}>Can't find that envelope</h2><p style={p}>{error}</p></Centered>;
-  if (!envelope) return <Centered><Logo size={40} /><h2 style={h2}>Loading…</h2></Centered>;
+  if (error) return <Centered><h2 style={h2}>Can't find that envelope</h2><p style={p}>{error}</p></Centered>;
+  if (!envelope) return <Centered><h2 style={h2}>Loading…</h2></Centered>;
 
   const signerStatus = (signer) => {
     const theirs = envelope.fields.filter((f) => f.signerId === signer.id);
     return theirs.length > 0 && theirs.every((f) => f.value);
   };
 
-  const anyPending = envelope.status !== "completed" && envelope.signers.some(
+  const anyPending = envelope.status !== "completed" && envelope.status !== "declined" && envelope.signers.some(
     (s) => !signerStatus(s) && s.email && !s.isSelf
   );
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "40px 20px", textAlign: "center" }}>
-      {envelope.status === "completed" ? (
-        <Seal label="COMPLETED" date={todayStr()} size={100} />
-      ) : (
-        <Logo size={56} />
+      {envelope.status === "completed" && <Seal label="COMPLETED" date={todayStr()} size={100} />}
+      <h2 style={h2}>
+        {envelope.status === "completed"
+          ? "Envelope completed"
+          : envelope.status === "declined"
+          ? "Signing declined"
+          : "Waiting on signers"}
+      </h2>
+      {envelope.documentName && (
+        <p style={{ ...p, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{envelope.documentName}</p>
       )}
-      <h2 style={h2}>{envelope.status === "completed" ? "Envelope completed" : "Waiting on signers"}</h2>
       <p style={p}>Tracking {envelope.trackingId} · {envelope.pages.length} page{envelope.pages.length !== 1 ? "s" : ""}</p>
+
+      {envelope.status === "declined" && (() => {
+        const ev = (envelope.auditLog || []).find((e) => e.type === "declined");
+        return (
+          <div style={{ background: "#FDF3F0", border: "1px solid #E7BCAE", borderRadius: 10, padding: "14px 16px", textAlign: "left", marginBottom: 20 }}>
+            <p style={{ fontSize: 16, color: "#8A3212", lineHeight: 1.5, margin: 0 }}>
+              <strong>{ev?.signerName || "A signer"}</strong> declined to sign, so this envelope is closed and
+              no further signatures can be added.
+              {ev?.reason ? <><br /><br />Reason given: &ldquo;{ev.reason}&rdquo;</> : null}
+            </p>
+          </div>
+        );
+      })()}
 
       <div style={{ background: "#fff", boxShadow: "var(--shadow)", borderRadius: 10, padding: 16, textAlign: "left", marginBottom: anyPending ? 12 : 24 }}>
         {envelope.signers.map((s) => {
           const complete = signerStatus(s);
-          const canResend = !complete && !!s.email && !s.isSelf && envelope.status !== "completed";
+          const canResend = !complete && !!s.email && !s.isSelf && envelope.status !== "completed" && envelope.status !== "declined";
           const msg = resendMsg[s.id];
           return (
             <div key={s.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
