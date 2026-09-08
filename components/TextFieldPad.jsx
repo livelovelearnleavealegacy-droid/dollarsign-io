@@ -20,7 +20,7 @@ export default function TextFieldPad({ label = "text", onConfirm, onCancel }) {
           autoFocus value={val} onChange={(e) => setVal(e.target.value)}
           placeholder={`e.g. ${label}`}
           onKeyDown={(e) => e.key === "Enter" && confirm()}
-          style={{ ...inputStyle, fontFamily: "'Public Sans', sans-serif", fontSize: 14 }}
+          style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16 }}
         />
         <button onClick={confirm} style={{ ...primaryBtn, width: "100%", marginTop: 16 }}>
           <Check size={16} style={{ marginRight: 6 }} /> Apply
