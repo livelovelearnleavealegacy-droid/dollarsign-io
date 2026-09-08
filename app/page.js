@@ -224,7 +224,7 @@ export default function Home() {
                 <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${FLAT_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>flat</span></span>
               </div>
               <ul style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 2, paddingLeft: 18, margin: 0 }}>
-                <li>Flat rate per envelope — ${FLAT_PRICE.toFixed(2)}</li>
+                <li>No subscription. Flat rate per envelope</li>
                 <li>Up to {MAX_SIGNERS} signers</li>
                 <li>Up to {MAX_PAGES} pages</li>
                 <li>Unlimited signature, date, and text fields</li>
