@@ -32,13 +32,40 @@ export default function SignaturePad({ onConfirm, onCancel }) {
     c.getContext("2d").clearRect(0, 0, c.width, c.height);
     setEmpty(true);
   };
+  // Renders the typed name to a transparent PNG using the same Caveat
+  // face shown in the preview above. Two reasons this beats storing the
+  // string: the final PDF is built server-side and has no access to a
+  // web font, and what the signer actually saw becomes the artifact
+  // rather than something re-rendered later with a font that might not
+  // have loaded.
+  const typedToPng = (name) => {
+    const scale = 4; // render high and let the PDF scale it down
+    const fontPx = 64;
+    const measure = document.createElement("canvas").getContext("2d");
+    measure.font = `600 ${fontPx}px 'Caveat', cursive`;
+    const w = Math.ceil(measure.measureText(name).width) + 24;
+    const h = Math.ceil(fontPx * 1.6);
+
+    const c = document.createElement("canvas");
+    c.width = w * scale;
+    c.height = h * scale;
+    const ctx = c.getContext("2d");
+    ctx.scale(scale, scale);
+    ctx.font = `600 ${fontPx}px 'Caveat', cursive`;
+    ctx.fillStyle = "#102A43";
+    ctx.textBaseline = "alphabetic";
+    ctx.fillText(name, 12, fontPx * 1.1);
+    return c.toDataURL("image/png");
+  };
+
   const confirm = () => {
     if (mode === "draw") {
       if (empty) return;
       onConfirm({ type: "image", data: canvasRef.current.toDataURL("image/png") });
     } else {
-      if (!typed.trim()) return;
-      onConfirm({ type: "text", data: typed.trim() });
+      const name = typed.trim();
+      if (!name) return;
+      onConfirm({ type: "image", data: typedToPng(name) });
     }
   };
 

@@ -271,6 +271,32 @@ async function main() {
     assert(r.json !== null, "resend route returned HTML, not JSON — the route file is probably at the wrong path");
   });
 
+  /* ---------- final PDF (server-built) ---------- */
+  group("pdf");
+
+  await test("pdf route is mounted at the correct path", async () => {
+    assert(draftId, "no draft envelope");
+    const res = await fetch(`${BASE}/api/envelopes/${draftId}/pdf`);
+    const ct = res.headers.get("content-type") || "";
+    assert(/json|pdf/.test(ct), `pdf route returned "${ct}" — the route file is probably at the wrong path`);
+  });
+
+  await test("pdf refuses an envelope that isn't complete (409)", async () => {
+    assert(draftId, "no draft envelope");
+    const res = await fetch(`${BASE}/api/envelopes/${draftId}/pdf`);
+    assertEq(res.status, 409, "status");
+  });
+
+  await test("pdf 404s an unknown envelope", async () => {
+    const res = await fetch(`${BASE}/api/envelopes/00000000-0000-0000-0000-000000000000/pdf`);
+    assertEq(res.status, 404, "status");
+  });
+
+  await test("orphan report is closed without a token", async () => {
+    const r = await api("/api/admin/orphans");
+    assertEq(r.status, 404, "status — the report must not be readable without ADMIN_TOKEN");
+  });
+
   /* ---------- void (two-step, unpaid-safe checks) ---------- */
   group("void");
 
@@ -501,6 +527,43 @@ async function main() {
       assertEq(r.status, 409, "status");
       const after = ((await api(`/api/envelopes/${PAID_ID}`)).json.auditLog || []).length;
       assertEq(after, before, "audit log grew despite the rejection");
+    });
+
+    group("post-payment (pdf)");
+
+    await test("completed envelope serves a real PDF", async () => {
+      const env = (await api(`/api/envelopes/${PAID_ID}`)).json;
+      if (env.status !== "completed") return; // only meaningful once finished
+      const res = await fetch(`${BASE}/api/envelopes/${PAID_ID}/pdf`);
+      assertEq(res.status, 200, "status");
+      assert((res.headers.get("content-type") || "").includes("application/pdf"), "not a PDF content-type");
+      const buf = new Uint8Array(await res.arrayBuffer());
+      const header = String.fromCharCode(...buf.slice(0, 5));
+      assertEq(header, "%PDF-", "file does not start with a PDF header");
+      assert(buf.length > 1000, `PDF is suspiciously small: ${buf.length} bytes`);
+    });
+
+    await test("pdf is cached after the first build", async () => {
+      const env = (await api(`/api/envelopes/${PAID_ID}`)).json;
+      if (env.status !== "completed") return;
+      await fetch(`${BASE}/api/envelopes/${PAID_ID}/pdf`); // ensure built
+      const res = await fetch(`${BASE}/api/envelopes/${PAID_ID}/pdf`);
+      assertEq(res.headers.get("x-pdf-cache"), "hit", "second request did not hit the cache");
+    });
+
+    await test("pdf is byte-identical across requests", async () => {
+      const env = (await api(`/api/envelopes/${PAID_ID}`)).json;
+      if (env.status !== "completed") return;
+      const a = new Uint8Array(await (await fetch(`${BASE}/api/envelopes/${PAID_ID}/pdf`)).arrayBuffer());
+      const b = new Uint8Array(await (await fetch(`${BASE}/api/envelopes/${PAID_ID}/pdf`)).arrayBuffer());
+      assertEq(a.length, b.length, "byte length differs between two downloads");
+    });
+
+    await test("pdf is never publicly cacheable", async () => {
+      const env = (await api(`/api/envelopes/${PAID_ID}`)).json;
+      if (env.status !== "completed") return;
+      const cc = (await fetch(`${BASE}/api/envelopes/${PAID_ID}/pdf`)).headers.get("cache-control") || "";
+      assert(/private/.test(cc), `Cache-Control is "${cc}" — a signed document must not sit in a shared cache`);
     });
 
     group("post-payment (void)");

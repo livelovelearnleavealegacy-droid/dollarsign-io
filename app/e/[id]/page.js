@@ -3,16 +3,11 @@ import { useEffect, useState } from "react";
 import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail, Ban } from "lucide-react";
 import Seal from "@/components/Seal";
 import { todayStr } from "@/lib/shared";
-import { buildFinalPages, hashPages, buildCertificatePage, buildFinalPdf } from "@/lib/compositePages";
 
 export default function EnvelopeStatusPage({ params }) {
   const { id } = params;
   const [envelope, setEnvelope] = useState(null);
   const [error, setError] = useState(null);
-  const [pdfUrl, setPdfUrl] = useState(null);
-  const [documentHash, setDocumentHash] = useState(null);
-  const [building, setBuilding] = useState(false);
-  const [buildError, setBuildError] = useState(null);
 
   // Per-signer resend state, keyed by signer id:
   //   resending[signerId] = true while the request is in flight
@@ -32,30 +27,6 @@ export default function EnvelopeStatusPage({ params }) {
       .catch((err) => setError(err.message));
   }, [id]);
 
-  useEffect(() => {
-    if (envelope?.status === "completed" && !pdfUrl && !building) {
-      setBuilding(true);
-      setBuildError(null);
-      (async () => {
-        try {
-          const finalPages = await buildFinalPages(envelope.pages, envelope.fields);
-          // Prefer the fingerprint the server computed and stored at
-          // completion. The client-side fallback only exists for
-          // envelopes completed before that was added — it is not
-          // reproducible across browsers, which is why it was replaced.
-          const hash = envelope.documentHash || (await hashPages(finalPages));
-          const certificate = await buildCertificatePage(envelope, hash);
-          const pdfBlob = await buildFinalPdf(finalPages, certificate);
-          setDocumentHash(hash);
-          setPdfUrl(URL.createObjectURL(pdfBlob));
-        } catch (err) {
-          setBuildError(err.message || "Something went wrong building the final document.");
-        } finally {
-          setBuilding(false);
-        }
-      })();
-    }
-  }, [envelope, pdfUrl, building]);
 
   const resendInvite = async (signer) => {
     setResending((r) => ({ ...r, [signer.id]: true }));
@@ -236,41 +207,33 @@ export default function EnvelopeStatusPage({ params }) {
       )}
 
       {envelope.status === "completed" && (
-        <>
-          {building && (
-            <p style={{ fontSize: 16, color: "#8A8F98", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-              <Loader2 size={16} className="spin" /> Flattening pages and building your document…
+        <div style={{ marginTop: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 16 }}>
+            <ShieldCheck size={16} color="var(--teal)" />
+            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98" }}>
+              {envelope.pages.length} page{envelope.pages.length !== 1 ? "s" : ""} + audit certificate, in one PDF
+            </span>
+          </div>
+
+          {/* Built on the server. The browser used to flatten every page
+              onto a canvas here, which could exhaust memory on a long
+              document — this is just a download now. */}
+          <a href={`/api/envelopes/${id}/pdf`} style={dlBtn}>
+            <Download size={17} style={{ marginRight: 8 }} /> Download signed document (PDF)
+          </a>
+
+          {envelope.documentHash && (
+            <p style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#9AA0AA", marginTop: 14, wordBreak: "break-all" }}>
+              sha256 {envelope.documentHash}
             </p>
           )}
-
-          {buildError && (
-            <p style={{ fontSize: 16, color: "#C1440E" }}>{buildError}</p>
-          )}
-
-          {pdfUrl && (
-            <div style={{ marginTop: 10 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 16 }}>
-                <ShieldCheck size={16} color="var(--teal)" />
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98" }}>
-                  {envelope.pages.length} page{envelope.pages.length !== 1 ? "s" : ""} + audit certificate, combined into one PDF
-                </span>
-              </div>
-              <a href={pdfUrl} download={`${envelope.trackingId}.pdf`} style={dlBtn}>
-                <Download size={17} style={{ marginRight: 8 }} /> Download signed document (PDF)
-              </a>
-              {documentHash && (
-                <p style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#9AA0AA", marginTop: 14, wordBreak: "break-all" }}>
-                  sha256 {documentHash}
-                </p>
-              )}
-              <p style={{ fontSize: 13, lineHeight: 1.5, color: "#9AA0AA", marginTop: 16 }}>
-                Save a copy for your records. You can always come back to this page, or use{" "}
-                <a href="/find-my-document" style={{ color: "#9AA0AA" }}>find my document</a> if you lose the link.
-              </p>
-            </div>
-          )}
-        </>
+          <p style={{ fontSize: 13, lineHeight: 1.5, color: "#9AA0AA", marginTop: 16 }}>
+            Save a copy for your records. You can always come back to this page, or use{" "}
+            <a href="/find-my-document" style={{ color: "#9AA0AA" }}>find my document</a> if you lose the link.
+          </p>
+        </div>
       )}
+
     </div>
   );
 }
