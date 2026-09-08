@@ -45,6 +45,7 @@ export async function POST(req) {
               envelopeId: envelope.id,
               signerId: signer.id,
               trackingId: envelope.trackingId,
+              documentName: envelope.documentName,
             });
             emailEvents.push({ type: "email_sent", signerId: signer.id, email: signer.email, at: new Date().toISOString() });
           } catch (err) {
