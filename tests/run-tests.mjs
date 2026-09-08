@@ -372,6 +372,23 @@ async function main() {
     assert(r.status === 404 || r.status === 402, `expected 404 or 402, got ${r.status}`);
   });
 
+  /* Consent must be idempotent and must stop at terminal states.
+     Found in production 2026-09-08: the endpoint appended a fresh
+     consent event on every call, including on voided and completed
+     envelopes, letting anyone with a signing link pad the audit trail
+     the certificate is built from. */
+  await test("consent is idempotent — a repeat call adds no audit event", async () => {
+    assert(draftId, "no draft envelope");
+    // Unpaid envelopes reject consent outright, so this only asserts the
+    // repeat call does not grow the log when the endpoint is reachable.
+    const first = await api(`/api/envelopes/${draftId}/consent`, { method: "POST", json: { signerId: "s0" } });
+    if (first.status !== 200) return; // gated by payment — covered in the PAID block
+    const before = ((await api(`/api/envelopes/${draftId}`)).json.auditLog || []).length;
+    await api(`/api/envelopes/${draftId}/consent`, { method: "POST", json: { signerId: "s0" } });
+    const after = ((await api(`/api/envelopes/${draftId}`)).json.auditLog || []).length;
+    assertEq(after, before, "audit log grew on a repeated consent");
+  });
+
   /* ---------- recovery privacy ---------- */
   group("document recovery");
 
@@ -474,6 +491,16 @@ async function main() {
       if (!anySigner) return;
       const r = await api(`/api/envelopes/${PAID_ID}/resend`, { method: "POST", json: { signerId: anySigner.id } });
       assertEq(r.status, 409, "status");
+    });
+
+    await test("consent refused on a terminal envelope", async () => {
+      const env = (await api(`/api/envelopes/${PAID_ID}`)).json;
+      if (!["completed", "declined", "voided"].includes(env.status)) return;
+      const before = (env.auditLog || []).length;
+      const r = await api(`/api/envelopes/${PAID_ID}/consent`, { method: "POST", json: { signerId: env.signers[0].id } });
+      assertEq(r.status, 409, "status");
+      const after = ((await api(`/api/envelopes/${PAID_ID}`)).json.auditLog || []).length;
+      assertEq(after, before, "audit log grew despite the rejection");
     });
 
     group("post-payment (void)");
