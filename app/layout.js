@@ -1,4 +1,5 @@
 import "./globals.css";
+import SiteHeader from "@/components/SiteHeader";
 
 export const metadata = {
   title: "DollarSign.io — Pay as you go. Sign with confidence.",
@@ -25,6 +26,7 @@ export default function RootLayout({ children }) {
         <link rel="icon" href="/favicon-dark.png" media="(prefers-color-scheme: dark)" />
       </head>
       <body>
+        <SiteHeader />
         {children}
         <footer style={{ textAlign: "center", padding: "24px 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, lineHeight: 1.9, color: "#9AA0AA" }}>
           <div>
