@@ -4,9 +4,11 @@ import { createEnvelope } from "@/lib/db";
 import { calcPrice, randTrackingId, MAX_PAGES, MAX_SIGNERS } from "@/lib/shared";
 import { clientIp, clientUserAgent } from "@/lib/request";
 
+const MAX_NAME_LENGTH = 120;
+
 export async function POST(req) {
   const body = await req.json();
-  const { senderName, senderEmail, pages, signers, fields } = body;
+  const { senderName, senderEmail, documentName, pages, signers, fields } = body;
 
   if (!Array.isArray(pages) || pages.length === 0) {
     return NextResponse.json({ error: "at least one page is required" }, { status: 400 });
@@ -37,6 +39,7 @@ export async function POST(req) {
   // considered "sent" until the Stripe webhook confirms a real charge.
   const envelope = createEnvelope({
     id, trackingId, senderName, senderEmail, pages, signers, fields, price, status: "pending_payment",
+    documentName: typeof documentName === "string" ? documentName.trim().slice(0, MAX_NAME_LENGTH) || null : null,
     creatorIp: clientIp(req),
     creatorUserAgent: clientUserAgent(req),
   });
