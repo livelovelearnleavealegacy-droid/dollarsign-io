@@ -14,10 +14,8 @@ export async function GET(req, { params }) {
 export async function PATCH(req, { params }) {
   const body = await req.json();
   const { fields, signerId, attested, reviewedAllPages } = body;
-
   const before = getEnvelope(params.id);
   if (!before) return NextResponse.json({ error: "not found" }, { status: 404 });
-
   if (before.status === "pending_payment") {
     return NextResponse.json({ error: "this envelope hasn't been paid for yet" }, { status: 402 });
   }
@@ -60,19 +58,39 @@ export async function PATCH(req, { params }) {
   const order = updated.signers.map((s) => s.id);
   const currentIdx = order.indexOf(signerId);
   const nextSigner = updated.signers[currentIdx + 1];
-
   const currentSignerDone = updated.fields
     .filter((f) => f.signerId === signerId)
     .every((f) => f.value);
 
   try {
-    if (updated.status === "completed" && updated.senderEmail) {
-      await sendCompletionNotice({
-        to: updated.senderEmail,
-        senderName: updated.senderName,
-        envelopeId: params.id,
-        trackingId: updated.trackingId,
-      });
+    if (updated.status === "completed") {
+      // Everyone who was part of this envelope gets the final document —
+      // the sender AND every signer with a real email address. Previously
+      // this only notified the sender, leaving signers with no way to
+      // ever receive their own copy of what they signed.
+      const recipients = [];
+      if (updated.senderEmail) recipients.push(updated.senderEmail);
+      for (const s of updated.signers) {
+        if (s.email && !recipients.includes(s.email)) recipients.push(s.email);
+      }
+
+      const results = await Promise.allSettled(
+        recipients.map((to) =>
+          sendCompletionNotice({
+            to,
+            senderName: updated.senderName,
+            envelopeId: params.id,
+            trackingId: updated.trackingId,
+          })
+        )
+      );
+      const failures = results.filter((r) => r.status === "rejected");
+      if (failures.length) {
+        return NextResponse.json({
+          envelope: updated,
+          notifyError: failures.map((f) => String(f.reason?.message || f.reason)).join("; "),
+        });
+      }
     } else if (currentSignerDone && nextSigner && nextSigner.email && !nextSigner.isSelf) {
       await sendTurnNotice({
         to: nextSigner.email,
