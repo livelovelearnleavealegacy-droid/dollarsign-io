@@ -4,7 +4,6 @@ import {
   Upload, Download, PenTool, ChevronLeft, ChevronRight,
   Users, Plus, X, ArrowRight, FileText, AlertTriangle, Loader2,
 } from "lucide-react";
-import Logo from "@/components/Logo";
 import FieldTag from "@/components/FieldTag";
 import {
   FLAT_PRICE, MAX_SIGNERS, MAX_PAGES, SIGNER_COLORS, calcPrice, uid,
@@ -17,6 +16,7 @@ export default function Home() {
   const [pageIdx, setPageIdx] = useState(0);
   const [senderName, setSenderName] = useState("");
   const [senderEmail, setSenderEmail] = useState("");
+  const [documentName, setDocumentName] = useState("");
   const [signers, setSigners] = useState([
     { id: uid(), name: "Signer 1", email: "", color: SIGNER_COLORS[0], isSelf: false },
     { id: uid(), name: "Signer 2", email: "", color: SIGNER_COLORS[1], isSelf: false },
@@ -105,6 +105,12 @@ export default function Home() {
 
   const onUpload = (e) => {
     if (!e.target.files?.length) return;
+    // Seed the document name from the file so it's never blank, while
+    // staying editable — "Lease.pdf" beats "ENV-84QTU2" in an inbox.
+    const firstName = e.target.files[0]?.name || "";
+    if (firstName && !documentName) {
+      setDocumentName(firstName.replace(/\.[^.]+$/, "").slice(0, 120));
+    }
     loadFiles(e.target.files, (newPages) => {
       setPages(newPages);
       setPageIdx(0);
@@ -165,6 +171,7 @@ export default function Home() {
         body: JSON.stringify({
           senderName: senderName || "Someone",
           senderEmail: senderEmail || null,
+          documentName: documentName || null,
           pages, signers, fields,
         }),
       });
@@ -192,15 +199,12 @@ export default function Home() {
   };
 
   return (
-    <div style={{ minHeight: "100vh" }}>
+    <div style={{ minHeight: "60vh" }}>
       {/* ---------- LANDING ---------- */}
       {step === "landing" && (
         <div>
-          <div style={{ padding: "72px 24px 56px", textAlign: "center" }}>
+          <div style={{ padding: "56px 24px 56px", textAlign: "center" }}>
             <div style={{ maxWidth: 560, margin: "0 auto" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
-                <img src="/wordmark.png" alt="DollarSign.io" style={{ height: 56, width: "auto" }} />
-              </div>
               <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98", margin: "0 0 34px" }}>
                 Pay as you go. Sign with confidence.
               </p>
@@ -211,7 +215,7 @@ export default function Home() {
                 No subscription. Upload your document, place your signer, date and text fields, pay and send.
               </p>
               <button onClick={() => fileInputRef.current.click()} style={{ ...primaryBtn, fontSize: 16, padding: "13px 26px", boxShadow: "var(--shadow)" }}>
-                <Upload size={17} style={{ marginRight: 8 }} /> Upload Document
+                <Upload size={17} style={{ marginRight: 8 }} /> Upload document pages
               </button>
               <input ref={fileInputRef} type="file" accept="image/*,application/pdf" multiple onChange={onUpload} style={{ display: "none" }} />
             </div>
@@ -221,10 +225,10 @@ export default function Home() {
             <div style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: "18px 20px", marginBottom: 24 }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
                 <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98" }}>PRICING</span>
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${FLAT_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>per envelope</span></span>
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 26, fontWeight: 700, color: "var(--ink)" }}>${FLAT_PRICE.toFixed(2)} <span style={{ fontSize: 16, fontWeight: 400, color: "#8A8F98" }}>flat</span></span>
               </div>
               <ul style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 2, paddingLeft: 18, margin: 0 }}>
-                <li>No subscription. Flat rate per envelope</li>
+                <li>Flat rate per envelope — ${FLAT_PRICE.toFixed(2)}</li>
                 <li>Up to {MAX_SIGNERS} signers</li>
                 <li>Up to {MAX_PAGES} pages</li>
                 <li>Unlimited signature, date, and text fields</li>
@@ -234,8 +238,8 @@ export default function Home() {
               {[
                 { icon: <FileText size={16} />, t: "Generous Capacity", d: `Up to ${MAX_PAGES} pages with up to ${MAX_SIGNERS} signers per envelope.` },
                 { icon: <PenTool size={16} />, t: "Draw or Type", d: "Each person receives their own link to sign or type their name." },
-                { icon: <Download size={16} />, t: "Yours to Keep", d: "Final document delivered to all signers by email. Documents recoverable indefinitely." },
-                { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit card processing done by Stripe. We never see your credit card information.` },
+                { icon: <Download size={16} />, t: "Yours to Keep", d: "Final document delivered to all signers by email, ready to download." },
+                { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit cards processed by Stripe. We never see credit card information.` },
               ].map((c, i) => (
                 <div key={i} style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16 }}>
                   <div style={{ color: "var(--accent)", marginBottom: 8 }}>{c.icon}</div>
@@ -251,9 +255,7 @@ export default function Home() {
       {/* ---------- EDITOR ---------- */}
       {step === "editor" && currentPage && (
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 130px" }}>
-          <TopBar sub="placing fields" />
-
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFF8E8", border: "1px solid #F4B942", borderRadius: 8, padding: "10px 12px", margin: "16px 0" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFF8E8", border: "1px solid #F4B942", borderRadius: 8, padding: "10px 12px", margin: "0 0 16px" }}>
             <AlertTriangle size={15} color="#946B00" style={{ flexShrink: 0, marginTop: 1 }} />
             <p style={{ fontSize: 16, color: "#6B5000", lineHeight: 1.45, margin: 0 }}>
               The U.S. ESIGN Act doesn't cover every document type — don't use this for wills or testamentary
@@ -263,7 +265,15 @@ export default function Home() {
             </p>
           </div>
 
-          <div style={{ display: "flex", gap: 10, margin: "16px 0" }}>
+          <input
+            value={documentName}
+            onChange={(e) => setDocumentName(e.target.value)}
+            placeholder="Document name (shown to signers and in emails)"
+            maxLength={120}
+            style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif", marginBottom: 10 }}
+          />
+
+          <div style={{ display: "flex", gap: 10, margin: "0 0 16px" }}>
             <input value={senderName} onChange={(e) => setSenderName(e.target.value)} placeholder="Your name (shown to signers)" style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
             <input value={senderEmail} onChange={(e) => setSenderEmail(e.target.value)} placeholder="Your email (for completion notice)" style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif" }} />
           </div>
@@ -315,6 +325,12 @@ export default function Home() {
             </div>
           </div>
 
+          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 12px" }}>
+            Large files take longer to load, be patient. When image loads, complete information above and click
+            buttons below to place fields. Fields will appear about three quarter of the way down the image, find
+            them and drag them where ever you want them to appear on the final rendering of your signed documents.
+          </p>
+
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
             <button onClick={() => addField("signature")} disabled={!activeSignerId} style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}><Plus size={13} /> Signature field</button>
             <button onClick={() => addField("date")} disabled={!activeSignerId} style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}><Plus size={13} /> Date field</button>
@@ -327,7 +343,6 @@ export default function Home() {
               <FieldTag key={f.id} field={f} signer={signers.find((s) => s.id === f.signerId)} onDrag={dragField} onRemove={removeField} containerRef={containerRef} />
             ))}
           </div>
-          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98", marginTop: 10 }}>drag tags onto the exact spot · fields carry over per page</p>
 
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#fff", borderTop: "1px solid var(--line)", padding: "12px 16px" }}>
             <div style={{ maxWidth: 608, margin: "0 auto" }}>
@@ -347,18 +362,6 @@ export default function Home() {
           </div>
         </div>
       )}
-    </div>
-  );
-}
-
-function TopBar({ sub, envId }) {
-  return (
-    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <Logo size={22} />
-        {envId && <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, letterSpacing: 1.5, color: "#8A8F98" }}>{envId}</span>}
-      </div>
-      <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 11, color: "var(--accent)" }}>{sub}</span>
     </div>
   );
 }
