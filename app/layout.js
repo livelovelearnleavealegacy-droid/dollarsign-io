@@ -5,13 +5,12 @@ export const metadata = {
   description: "Upload a document, add signers, sign it. Pay per envelope, no subscription.",
 };
 
-// The recovery link stays visually dominant — black, bold, underlined —
-// because it's the single highest-value link in the footer: someone who
-// can't find their document is the person most likely to email support.
-// The rest sit quietly beneath it.
-const recoveryLink = { color: "#000000", fontWeight: 700, textDecoration: "underline" };
-const footerLink = { color: "#9AA0AA", textDecoration: "none" };
-const dot = { color: "#C9CDD4", margin: "0 8px" };
+// Every footer link is black, bold, and underlined so it reads as a
+// deliberate offer of help rather than boilerplate. These are the
+// self-service exits — the more people take them, the less support mail
+// there is to answer.
+const footerLink = { color: "#000000", fontWeight: 700, textDecoration: "underline" };
+const dot = { color: "#8A8F98", margin: "0 8px" };
 
 export default function RootLayout({ children }) {
   return (
@@ -29,7 +28,7 @@ export default function RootLayout({ children }) {
         {children}
         <footer style={{ textAlign: "center", padding: "24px 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, lineHeight: 1.9, color: "#9AA0AA" }}>
           <div>
-            <a href="/find-my-document" style={recoveryLink}>Lost your document link?</a>
+            <a href="/find-my-document" style={footerLink}>Lost your document link?</a>
           </div>
           <div>
             <a href="/faq" style={footerLink}>FAQ &amp; support</a>
