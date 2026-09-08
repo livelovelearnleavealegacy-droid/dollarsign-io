@@ -325,10 +325,12 @@ export default function Home() {
             </div>
           </div>
 
-          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, fontWeight: 700, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 12px" }}>
-            Large files take longer to load, be patient. When image loads, complete information above and click
-            buttons below to place fields. Fields will appear about three quarter of the way down the image, find
-            them and drag them where ever you want them to appear on the final rendering of your signed documents.
+          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 400, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 12px" }}>
+            Complete &ldquo;Document name,&rdquo; &ldquo;Your name,&rdquo; and &ldquo;Your email.&rdquo; Select &ldquo;Signer.&rdquo;
+            Select &ldquo;&lt;&rdquo; or &ldquo;&gt;&rdquo; until you are on the page where you want the fields located.
+            Select &ldquo;this is me&rdquo; or add &ldquo;email address.&rdquo; Click &ldquo;Signature field,&rdquo;
+            &ldquo;Date field&rdquo; or &ldquo;Text field.&rdquo; Scroll down to find them, then drag fields where desired.
+            Repeat for all signers and fields. Larger files take longer to load.
           </p>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
