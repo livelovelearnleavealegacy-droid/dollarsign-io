@@ -20,6 +20,22 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ error: "this envelope hasn't been paid for yet" }, { status: 402 });
   }
 
+  // Signing is not replayable. Without these two checks, anyone holding
+  // a signing link can re-submit after the fact: each replay appends
+  // another "signed" event to the audit log with a fresh timestamp and
+  // IP, and — on a completed envelope — re-sends the completion email
+  // to every party. The audit trail is the evidentiary value of this
+  // whole product, so a spurious event in it is worse than the extra
+  // email. Mirrors the idempotency guard in finalizeEnvelopePayment.
+  if (before.status === "completed") {
+    return NextResponse.json({ error: "this envelope is already complete" }, { status: 409 });
+  }
+
+  const priorFields = before.fields.filter((f) => f.signerId === signerId);
+  if (priorFields.length > 0 && priorFields.every((f) => f.value)) {
+    return NextResponse.json({ error: "you have already signed this envelope" }, { status: 409 });
+  }
+
   // ESIGN requires consent be obtained separately from the act of
   // signing, and requires clear intent to sign. Both are enforced here
   // server-side — a client that skips the consent screen or the
@@ -36,6 +52,9 @@ export async function PATCH(req, { params }) {
   }
 
   const signer = before.signers.find((s) => s.id === signerId);
+  if (!signer) {
+    return NextResponse.json({ error: "signer not found" }, { status: 404 });
+  }
 
   // Server-recorded, not client-reported — this is what gives the audit
   // trail evidentiary weight. The signer's browser never gets a say in
