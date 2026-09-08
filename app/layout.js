@@ -5,6 +5,14 @@ export const metadata = {
   description: "Upload a document, add signers, sign it. Pay per envelope, no subscription.",
 };
 
+// The recovery link stays visually dominant — black, bold, underlined —
+// because it's the single highest-value link in the footer: someone who
+// can't find their document is the person most likely to email support.
+// The rest sit quietly beneath it.
+const recoveryLink = { color: "#000000", fontWeight: 700, textDecoration: "underline" };
+const footerLink = { color: "#9AA0AA", textDecoration: "none" };
+const dot = { color: "#C9CDD4", margin: "0 8px" };
+
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
@@ -19,9 +27,23 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         {children}
-        <footer style={{ textAlign: "center", padding: "24px 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "#9AA0AA" }}>
-        <a href="/find-my-document" style={{ color: "#000000", fontWeight: 700, textDecoration: "underline" }}>Lost your document link?</a>          <br />
-          DollarSign.io © Live, Love, Learn, Leave a Legacy LLC
+        <footer style={{ textAlign: "center", padding: "24px 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, lineHeight: 1.9, color: "#9AA0AA" }}>
+          <div>
+            <a href="/find-my-document" style={recoveryLink}>Lost your document link?</a>
+          </div>
+          <div>
+            <a href="/faq" style={footerLink}>FAQ &amp; support</a>
+            <span style={dot}>·</span>
+            <a href="/terms" style={footerLink}>Terms</a>
+            <span style={dot}>·</span>
+            <a href="/privacy" style={footerLink}>Privacy</a>
+          </div>
+          <div>
+            <a href="mailto:support@dollarsign.io" style={footerLink}>support@dollarsign.io</a>
+          </div>
+          <div style={{ marginTop: 4 }}>
+            DollarSign.io © Live, Love, Learn, Leave a Legacy LLC
+          </div>
         </footer>
       </body>
     </html>
