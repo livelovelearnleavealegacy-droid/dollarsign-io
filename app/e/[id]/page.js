@@ -1,19 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Download, Check, Clock, ShieldCheck } from "lucide-react";
+import { Download, Check, Clock, ShieldCheck, Loader2 } from "lucide-react";
 import Logo from "@/components/Logo";
 import Seal from "@/components/Seal";
 import { todayStr } from "@/lib/shared";
-import { buildFinalPages, hashPages, buildCertificatePage } from "@/lib/compositePages";
+import { buildFinalPages, hashPages, buildCertificatePage, buildFinalPdf } from "@/lib/compositePages";
 
 export default function EnvelopeStatusPage({ params }) {
   const { id } = params;
   const [envelope, setEnvelope] = useState(null);
   const [error, setError] = useState(null);
-  const [finalPages, setFinalPages] = useState([]);
-  const [certificateUrl, setCertificateUrl] = useState(null);
+  const [pdfUrl, setPdfUrl] = useState(null);
   const [documentHash, setDocumentHash] = useState(null);
   const [building, setBuilding] = useState(false);
+  const [buildError, setBuildError] = useState(null);
 
   useEffect(() => {
     fetch(`/api/envelopes/${id}`)
@@ -23,19 +23,25 @@ export default function EnvelopeStatusPage({ params }) {
   }, [id]);
 
   useEffect(() => {
-    if (envelope?.status === "completed" && finalPages.length === 0 && !building) {
+    if (envelope?.status === "completed" && !pdfUrl && !building) {
       setBuilding(true);
+      setBuildError(null);
       (async () => {
-        const pages = await buildFinalPages(envelope.pages, envelope.fields);
-        const hash = await hashPages(pages);
-        const cert = await buildCertificatePage(envelope, hash);
-        setFinalPages(pages);
-        setDocumentHash(hash);
-        setCertificateUrl(cert);
-        setBuilding(false);
+        try {
+          const finalPages = await buildFinalPages(envelope.pages, envelope.fields);
+          const hash = await hashPages(finalPages);
+          const certificate = await buildCertificatePage(envelope, hash);
+          const pdfBlob = await buildFinalPdf(finalPages, certificate);
+          setDocumentHash(hash);
+          setPdfUrl(URL.createObjectURL(pdfBlob));
+        } catch (err) {
+          setBuildError(err.message || "Something went wrong building the final document.");
+        } finally {
+          setBuilding(false);
+        }
       })();
     }
-  }, [envelope, finalPages.length, building]);
+  }, [envelope, pdfUrl, building]);
 
   if (error) return <Centered><Logo size={40} /><h2 style={h2}>Can't find that envelope</h2><p style={p}>{error}</p></Centered>;
   if (!envelope) return <Centered><Logo size={40} /><h2 style={h2}>Loading…</h2></Centered>;
@@ -69,36 +75,36 @@ export default function EnvelopeStatusPage({ params }) {
       </div>
 
       {envelope.status === "completed" && (
-        building ? (
-          <p style={{ fontSize: 16, color: "#8A8F98" }}>Flattening pages and building the audit certificate…</p>
-        ) : (
-          <>
-            {finalPages.map((fp, i) => (
-              <div key={fp.id} style={{ marginBottom: 18 }}>
-                <img src={fp.url} alt={`signed page ${i + 1}`} style={{ width: "100%", borderRadius: 8, border: "1px solid var(--line)", marginBottom: 8 }} />
-                <a href={fp.url} download={`${envelope.trackingId}-page${i + 1}.png`} style={dlBtn}>
-                  <Download size={15} style={{ marginRight: 6 }} /> Download page {i + 1}
-                </a>
-              </div>
-            ))}
+        <>
+          {building && (
+            <p style={{ fontSize: 16, color: "#8A8F98", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <Loader2 size={16} className="spin" /> Flattening pages and building your document…
+            </p>
+          )}
 
-            {certificateUrl && (
-              <div style={{ marginTop: 30, paddingTop: 24, borderTop: "1px solid var(--line)" }}>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 12 }}>
-                  <ShieldCheck size={16} color="var(--teal)" />
-                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98" }}>AUDIT CERTIFICATE</span>
-                </div>
-                <img src={certificateUrl} alt="certificate of completion" style={{ width: "100%", borderRadius: 8, border: "1px solid var(--line)", marginBottom: 8 }} />
-                <a href={certificateUrl} download={`${envelope.trackingId}-certificate.png`} style={dlBtn}>
-                  <Download size={15} style={{ marginRight: 6 }} /> Download certificate
-                </a>
-                <p style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#9AA0AA", marginTop: 10, wordBreak: "break-all" }}>
+          {buildError && (
+            <p style={{ fontSize: 16, color: "#C1440E" }}>{buildError}</p>
+          )}
+
+          {pdfUrl && (
+            <div style={{ marginTop: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginBottom: 16 }}>
+                <ShieldCheck size={16} color="var(--teal)" />
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98" }}>
+                  {envelope.pages.length} page{envelope.pages.length !== 1 ? "s" : ""} + audit certificate, combined into one PDF
+                </span>
+              </div>
+              <a href={pdfUrl} download={`${envelope.trackingId}.pdf`} style={dlBtn}>
+                <Download size={17} style={{ marginRight: 8 }} /> Download signed document (PDF)
+              </a>
+              {documentHash && (
+                <p style={{ fontSize: 13, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#9AA0AA", marginTop: 14, wordBreak: "break-all" }}>
                   sha256 {documentHash}
                 </p>
-              </div>
-            )}
-          </>
-        )
+              )}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -106,7 +112,7 @@ export default function EnvelopeStatusPage({ params }) {
 
 const h2 = { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 600, margin: "18px 0 6px", color: "var(--ink)" };
 const p = { color: "#5B5F6B", fontSize: 16, marginBottom: 20 };
-const dlBtn = { background: "var(--accent)", color: "#fff", borderRadius: 7, padding: "11px 18px", fontSize: 16, fontWeight: 600, display: "flex", justifyContent: "center", alignItems: "center", textDecoration: "none" };
+const dlBtn = { background: "var(--accent)", color: "#fff", borderRadius: 7, padding: "14px 24px", fontSize: 17, fontWeight: 600, display: "inline-flex", justifyContent: "center", alignItems: "center", textDecoration: "none" };
 
 function Centered({ children }) {
   return <div style={{ maxWidth: 420, margin: "0 auto", padding: "80px 20px", textAlign: "center" }}>{children}</div>;
