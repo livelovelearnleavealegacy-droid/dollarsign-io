@@ -1,0 +1,53 @@
+name: Tests
+
+# Runs the API suite in tests/run-tests.mjs against production. No
+# dependencies to install — the script uses only Node built-ins, so a
+# run takes a few seconds.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Site to test against"
+        required: false
+        default: "https://dollarsign-io-production.up.railway.app"
+      paid_envelope_id:
+        description: "Optional: a paid envelope id, to also run the ESIGN, resend and void tests"
+        required: false
+        default: ""
+      send_email:
+        description: "Allow tests that send real email (off by default)"
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+  schedule:
+    # Weekly, Monday 08:00 UTC. Deliberately not daily: every run leaves
+    # two unpaid test envelopes and two page files behind, and there is
+    # no cleanup job yet. Weekly keeps that pile small while still
+    # catching a production regression within a few days.
+    - cron: "0 8 * * 1"
+
+jobs:
+  api-tests:
+    name: API suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Run test suite
+        env:
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://dollarsign-io-production.up.railway.app' }}
+          TEST_EMAIL: ${{ vars.TEST_EMAIL || 'livelovelearnleavealegacy@gmail.com' }}
+          PAID_ENVELOPE_ID: ${{ github.event.inputs.paid_envelope_id }}
+          # Email-sending tests are OFF unless explicitly enabled on a
+          # manual run. Otherwise the recovery test would mail Leroy a
+          # document list on every push and every schedule tick.
+          SKIP_EMAIL: ${{ github.event.inputs.send_email == 'true' && '' || '1' }}
+        run: node tests/run-tests.mjs
