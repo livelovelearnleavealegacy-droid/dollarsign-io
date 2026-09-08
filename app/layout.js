@@ -20,8 +20,7 @@ export default function RootLayout({ children }) {
       <body>
         {children}
         <footer style={{ textAlign: "center", padding: "24px 16px", fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "#9AA0AA" }}>
-          <a href="/find-my-document" style={{ color: "#9AA0AA", textDecoration: "underline" }}>Lost your document link?</a>
-          <br />
+        <a href="/find-my-document" style={{ color: "#000000", fontWeight: 700, textDecoration: "underline" }}>Lost your document link?</a>          <br />
           DollarSign.io © Live, Love, Learn, Leave a Legacy LLC
         </footer>
       </body>
