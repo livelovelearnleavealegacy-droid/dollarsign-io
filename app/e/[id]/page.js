@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Download, Check, Clock, ShieldCheck, Loader2 } from "lucide-react";
+import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail } from "lucide-react";
 import Logo from "@/components/Logo";
 import Seal from "@/components/Seal";
 import { todayStr } from "@/lib/shared";
@@ -14,6 +14,12 @@ export default function EnvelopeStatusPage({ params }) {
   const [documentHash, setDocumentHash] = useState(null);
   const [building, setBuilding] = useState(false);
   const [buildError, setBuildError] = useState(null);
+
+  // Per-signer resend state, keyed by signer id:
+  //   resending[signerId] = true while the request is in flight
+  //   resendMsg[signerId] = { ok: boolean, text: string } after it lands
+  const [resending, setResending] = useState({});
+  const [resendMsg, setResendMsg] = useState({});
 
   useEffect(() => {
     fetch(`/api/envelopes/${id}`)
@@ -43,6 +49,29 @@ export default function EnvelopeStatusPage({ params }) {
     }
   }, [envelope, pdfUrl, building]);
 
+  const resendInvite = async (signer) => {
+    setResending((r) => ({ ...r, [signer.id]: true }));
+    setResendMsg((m) => ({ ...m, [signer.id]: null }));
+    try {
+      const res = await fetch(`/api/envelopes/${id}/resend`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signerId: signer.id }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't resend that invite.");
+      setResendMsg((m) => ({
+        ...m,
+        [signer.id]: { ok: true, text: `Sent again to ${data.sentTo}. Ask them to check their spam folder.` },
+      }));
+      if (data.envelope) setEnvelope(data.envelope);
+    } catch (err) {
+      setResendMsg((m) => ({ ...m, [signer.id]: { ok: false, text: err.message } }));
+    } finally {
+      setResending((r) => ({ ...r, [signer.id]: false }));
+    }
+  };
+
   if (error) return <Centered><Logo size={40} /><h2 style={h2}>Can't find that envelope</h2><p style={p}>{error}</p></Centered>;
   if (!envelope) return <Centered><Logo size={40} /><h2 style={h2}>Loading…</h2></Centered>;
 
@@ -50,6 +79,10 @@ export default function EnvelopeStatusPage({ params }) {
     const theirs = envelope.fields.filter((f) => f.signerId === signer.id);
     return theirs.length > 0 && theirs.every((f) => f.value);
   };
+
+  const anyPending = envelope.status !== "completed" && envelope.signers.some(
+    (s) => !signerStatus(s) && s.email && !s.isSelf
+  );
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "40px 20px", textAlign: "center" }}>
@@ -61,18 +94,60 @@ export default function EnvelopeStatusPage({ params }) {
       <h2 style={h2}>{envelope.status === "completed" ? "Envelope completed" : "Waiting on signers"}</h2>
       <p style={p}>Tracking {envelope.trackingId} · {envelope.pages.length} page{envelope.pages.length !== 1 ? "s" : ""}</p>
 
-      <div style={{ background: "#fff", boxShadow: "var(--shadow)", borderRadius: 10, padding: 16, textAlign: "left", marginBottom: 24 }}>
+      <div style={{ background: "#fff", boxShadow: "var(--shadow)", borderRadius: 10, padding: 16, textAlign: "left", marginBottom: anyPending ? 12 : 24 }}>
         {envelope.signers.map((s) => {
           const complete = signerStatus(s);
+          const canResend = !complete && !!s.email && !s.isSelf && envelope.status !== "completed";
+          const msg = resendMsg[s.id];
           return (
-            <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
-              {complete ? <Check size={16} color="#4E8B5A" /> : <Clock size={16} color="#9AA0AA" />}
-              <div style={{ flex: 1, fontSize: 16, color: "var(--ink)" }}>{s.name}</div>
-              <span style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: complete ? "#4E8B5A" : "#9AA0AA" }}>{complete ? "signed" : "pending"}</span>
+            <div key={s.id} style={{ padding: "8px 0", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {complete ? <Check size={16} color="#4E8B5A" /> : <Clock size={16} color="#9AA0AA" />}
+                <div style={{ flex: 1, fontSize: 16, color: "var(--ink)" }}>{s.name}</div>
+                <span style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: complete ? "#4E8B5A" : "#9AA0AA" }}>{complete ? "signed" : "pending"}</span>
+              </div>
+
+              {canResend && (
+                <div style={{ paddingLeft: 24, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => resendInvite(s)}
+                    disabled={!!resending[s.id]}
+                    style={{
+                      ...resendBtn,
+                      opacity: resending[s.id] ? 0.55 : 1,
+                      cursor: resending[s.id] ? "default" : "pointer",
+                    }}
+                  >
+                    {resending[s.id]
+                      ? <Loader2 size={13} className="spin" style={{ marginRight: 5 }} />
+                      : <Send size={13} style={{ marginRight: 5 }} />}
+                    {resending[s.id] ? "Sending…" : "Resend invite"}
+                  </button>
+                  {s.email && (
+                    <span style={{ fontSize: 13, color: "#9AA0AA", marginLeft: 8 }}>{s.email}</span>
+                  )}
+                  {msg && (
+                    <p style={{ fontSize: 13, lineHeight: 1.45, margin: "5px 0 2px", color: msg.ok ? "#4E8B5A" : "#C1440E" }}>
+                      {msg.text}
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           );
         })}
       </div>
+
+      {anyPending && (
+        <p style={{ display: "flex", alignItems: "flex-start", gap: 7, textAlign: "left", fontSize: 13, lineHeight: 1.5, color: "#8A8F98", marginBottom: 24 }}>
+          <Mail size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+          <span>
+            Signer says they never got the email? Have them check their spam or junk folder first — that's where it usually is.
+            If it isn't there, resend the invite above. Still stuck? <a href="/faq" style={{ color: "#8A8F98" }}>See the FAQ</a>.
+          </span>
+        </p>
+      )}
 
       {envelope.status === "completed" && (
         <>
@@ -102,6 +177,10 @@ export default function EnvelopeStatusPage({ params }) {
                   sha256 {documentHash}
                 </p>
               )}
+              <p style={{ fontSize: 13, lineHeight: 1.5, color: "#9AA0AA", marginTop: 16 }}>
+                Save a copy for your records. You can always come back to this page, or use{" "}
+                <a href="/find-my-document" style={{ color: "#9AA0AA" }}>find my document</a> if you lose the link.
+              </p>
             </div>
           )}
         </>
@@ -113,6 +192,12 @@ export default function EnvelopeStatusPage({ params }) {
 const h2 = { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 22, fontWeight: 600, margin: "18px 0 6px", color: "var(--ink)" };
 const p = { color: "#5B5F6B", fontSize: 16, marginBottom: 20 };
 const dlBtn = { background: "var(--accent)", color: "#fff", borderRadius: 7, padding: "14px 24px", fontSize: 17, fontWeight: 600, display: "inline-flex", justifyContent: "center", alignItems: "center", textDecoration: "none" };
+const resendBtn = {
+  border: "1px solid var(--line)", background: "#fff", borderRadius: 20,
+  padding: "4px 11px", fontSize: 13, color: "#5B5F6B",
+  fontFamily: "'Plus Jakarta Sans', sans-serif",
+  display: "inline-flex", alignItems: "center",
+};
 
 function Centered({ children }) {
   return <div style={{ maxWidth: 420, margin: "0 auto", padding: "80px 20px", textAlign: "center" }}>{children}</div>;
