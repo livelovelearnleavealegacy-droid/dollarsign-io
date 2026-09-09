@@ -5,7 +5,8 @@ import Seal from "@/components/Seal";
 import SignaturePad from "@/components/SignaturePad";
 import TextFieldPad from "@/components/TextFieldPad";
 import ConsentScreen from "@/components/ConsentScreen";
-import { todayStr, primaryBtn, iconBtn, inputStyle, ov } from "@/lib/shared";
+import { CheckBox } from "@/components/FieldTag";
+import { todayStr, primaryBtn, iconBtn, inputStyle, ov, CHECKED, UNCHECKED } from "@/lib/shared";
 
 export default function SignPage({ params }) {
   const { envelopeId, signerId } = params;
@@ -15,6 +16,7 @@ export default function SignPage({ params }) {
   const [visitedPages, setVisitedPages] = useState(new Set([0]));
   const [fields, setFields] = useState([]);
   const [showSignPad, setShowSignPad] = useState(false);
+  const [signPadKind, setSignPadKind] = useState("signature");
   const [showTextPad, setShowTextPad] = useState(false);
   const [activeFieldId, setActiveFieldId] = useState(null);
   const [attested, setAttested] = useState(false);
@@ -72,6 +74,15 @@ export default function SignPage({ params }) {
     );
   }
 
+  if (envelope.status === "expired") {
+    return (
+      <StatusScreen
+        title="This document expired"
+        message="It reached its expiry date before everyone signed, so it can no longer be signed. If you still need to sign, contact the sender — they can send it again."
+      />
+    );
+  }
+
   if (envelope.status === "completed") {
     return <StatusScreen title="Already complete" message="Every signer has finished this envelope. Check your email for the completed document." />;
   }
@@ -101,7 +112,13 @@ export default function SignPage({ params }) {
   const allPagesReviewed = visitedPages.size === envelope.pages.length;
   const canSubmit = myFieldsDone && allPagesReviewed && attested;
 
-  const openSignPad = (fieldId) => { setActiveFieldId(fieldId); setShowSignPad(true); };
+  const openSignPad = (fieldId, kind = "signature") => { setActiveFieldId(fieldId); setSignPadKind(kind); setShowSignPad(true); };
+  // A checkbox toggles rather than opening anything. It starts null
+  // (never answered) and becomes "checked"/"unchecked" — both truthy, so
+  // an unchecked box still counts as a completed field. Storing `false`
+  // would leave the envelope permanently unfinishable.
+  const toggleCheck = (fieldId) =>
+    setFields((fs) => fs.map((f) => (f.id === fieldId ? { ...f, value: f.value === CHECKED ? UNCHECKED : CHECKED } : f)));
   const applySignature = (val) => {
     setFields((fs) => fs.map((f) => (f.id === activeFieldId ? { ...f, value: val } : f)));
     setShowSignPad(false);
@@ -159,6 +176,16 @@ export default function SignPage({ params }) {
   };
 
   if (done) {
+    // Who still owes a signature, in the sender's listed order. Offering
+    // to pass the device along is what makes signing in person work at
+    // all: everyone standing at the same desk shouldn't have to go and
+    // find their own email to continue.
+    const stillPending = envelope.signers.filter((s) => {
+      const theirs = envelope.fields.filter((f) => f.signerId === s.id);
+      return theirs.length > 0 && !theirs.every((f) => f.value);
+    });
+    const nextUp = envelope.signingMode === "sequential" ? stillPending.slice(0, 1) : stillPending;
+
     return (
       <div style={{ maxWidth: 480, margin: "0 auto", padding: "60px 20px", textAlign: "center" }}>
         <Seal label="SIGNED" date={todayStr()} size={110} />
@@ -166,6 +193,30 @@ export default function SignPage({ params }) {
         <p style={{ color: "#5B5F6B", fontSize: 16 }}>
           Your part of {envelope.documentName ? `${envelope.documentName} (${envelope.trackingId})` : `tracking ${envelope.trackingId}`} is complete.
         </p>
+
+        {envelope.status !== "completed" && nextUp.length > 0 && (
+          <div style={{ borderTop: "1px solid var(--line)", marginTop: 26, paddingTop: 20, textAlign: "left" }}>
+            <p style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 1.5, margin: "0 0 12px" }}>
+              Signing together in person? Hand this device to whoever is next — they can sign right here
+              instead of waiting for their email.
+            </p>
+            {nextUp.map((s) => (
+              <a
+                key={s.id}
+                href={`/sign/${envelopeId}/${s.id}`}
+                style={{
+                  ...primaryBtn, width: "100%", marginBottom: 8, textDecoration: "none",
+                  background: "#fff", color: "var(--ink)", border: "1.5px solid var(--ink)",
+                }}
+              >
+                Hand device to {s.name}
+              </a>
+            ))}
+            <p style={{ fontSize: 13, color: "#9AA0AA", lineHeight: 1.5, margin: "6px 0 0" }}>
+              Not together? Ignore this — {nextUp.length === 1 ? "they have" : "they each have"} their own emailed link.
+            </p>
+          </div>
+        )}
       </div>
     );
   }
@@ -200,8 +251,9 @@ export default function SignPage({ params }) {
             <div key={f.id}
               onClick={() => {
                 if (!mine) return;
-                if (f.kind === "signature") openSignPad(f.id);
+                if (f.kind === "signature" || f.kind === "initials") openSignPad(f.id, f.kind);
                 else if (f.kind === "date") applyDate(f.id);
+                else if (f.kind === "checkbox") toggleCheck(f.id);
                 else openTextPad(f.id);
               }}
               style={{
@@ -211,13 +263,17 @@ export default function SignPage({ params }) {
                 padding: f.kind === "signature" ? "5px 12px" : "4px 9px", opacity: mine || f.value ? 1 : 0.55,
               }}>
               {f.value ? (
-                f.kind === "signature" ? (
-                  f.value.type === "image" ? <img src={f.value.data} alt="sig" style={{ height: 26 }} /> : <span style={{ fontFamily: "'Caveat', cursive", fontSize: 22 }}>{f.value.data}</span>
+                f.kind === "signature" || f.kind === "initials" ? (
+                  f.value.type === "image"
+                    ? <img src={f.value.data} alt={f.kind} style={{ height: f.kind === "initials" ? 18 : 26 }} />
+                    : <span style={{ fontFamily: "'Caveat', cursive", fontSize: 22 }}>{f.value.data}</span>
+                ) : f.kind === "checkbox" ? (
+                  <CheckBox checked={f.value === CHECKED} />
                 ) : <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16 }}>{f.value}</span>
               ) : mine ? (
                 <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: owner.color, display: "flex", alignItems: "center", gap: 5 }}>
-                  {f.kind === "signature" ? <PenTool size={12} /> : f.kind === "date" ? <CalendarDays size={12} /> : <Type size={12} />}
-                  tap to {f.kind === "signature" ? "sign" : f.kind === "date" ? "date" : "fill in"}
+                  {f.kind === "signature" || f.kind === "initials" ? <PenTool size={12} /> : f.kind === "date" ? <CalendarDays size={12} /> : f.kind === "checkbox" ? <Check size={12} /> : <Type size={12} />}
+                  tap to {f.kind === "signature" ? "sign" : f.kind === "initials" ? "initial" : f.kind === "date" ? "date" : f.kind === "checkbox" ? "check" : "fill in"}
                 </span>
               ) : (
                 <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#9AA0AA", display: "flex", alignItems: "center", gap: 5 }}>
@@ -313,7 +369,7 @@ export default function SignPage({ params }) {
         </div>
       )}
 
-      {showSignPad && <SignaturePad onConfirm={applySignature} onCancel={() => setShowSignPad(false)} />}
+      {showSignPad && <SignaturePad kind={signPadKind} onConfirm={applySignature} onCancel={() => setShowSignPad(false)} />}
       {showTextPad && <TextFieldPad label="title" onConfirm={applyText} onCancel={() => setShowTextPad(false)} />}
     </div>
   );

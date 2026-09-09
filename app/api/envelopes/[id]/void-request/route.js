@@ -3,6 +3,7 @@ import crypto from "crypto";
 import { getEnvelope, setVoidToken, appendAuditEvent } from "@/lib/db";
 import { sendVoidLink } from "@/lib/email";
 import { clientIp, clientUserAgent } from "@/lib/request";
+import { blockedReason } from "@/lib/guards";
 
 // Step one of two. Anyone holding the envelope link can ask to void it;
 // the token that actually authorises the void goes only to senderEmail.
@@ -21,18 +22,14 @@ export async function POST(req, { params }) {
   const envelope = getEnvelope(params.id);
   if (!envelope) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  if (envelope.status === "pending_payment") {
-    return NextResponse.json({ error: "This envelope hasn't been paid for yet." }, { status: 402 });
-  }
-  if (envelope.status === "completed") {
-    return NextResponse.json({ error: "This envelope is already complete and can't be voided." }, { status: 409 });
-  }
-  if (envelope.status === "declined") {
-    return NextResponse.json({ error: "A signer already declined this envelope." }, { status: 409 });
-  }
-  if (envelope.status === "voided") {
-    return NextResponse.json({ error: "This envelope has already been voided." }, { status: 409 });
-  }
+  const blocked = blockedReason(envelope, {
+    pending_payment: "This envelope hasn't been paid for yet.",
+    completed: "This envelope is already complete and can't be voided.",
+    declined: "A signer already declined this envelope.",
+    voided: "This envelope has already been voided.",
+    expired: "This envelope already expired, so there is nothing left to void.",
+  });
+  if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
 
   // Without a sender address there is nobody to authorise the void, so
   // the flow simply cannot run. Say so plainly rather than failing oddly.

@@ -7,6 +7,7 @@ import {
 import FieldTag from "@/components/FieldTag";
 import {
   FLAT_PRICE, MAX_SIGNERS, MAX_PAGES, SIGNER_COLORS, calcPrice, uid,
+  FIELD_KINDS, FIELD_LABELS, EXPIRY_CHOICES, DEFAULT_EXPIRY_DAYS, DEFAULT_SIGNING_MODE,
   primaryBtn, iconBtn, chipBtn, inputStyle,
 } from "@/lib/shared";
 
@@ -23,6 +24,8 @@ export default function Home() {
   ]);
   const [activeSignerId, setActiveSignerId] = useState(null);
   const [fields, setFields] = useState([]);
+  const [signingMode, setSigningMode] = useState(DEFAULT_SIGNING_MODE);
+  const [expiresInDays, setExpiresInDays] = useState(DEFAULT_EXPIRY_DAYS);
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState(null);
 
@@ -177,7 +180,7 @@ export default function Home() {
           senderName: senderName || "Someone",
           senderEmail: senderEmail || null,
           documentName: documentName || null,
-          pages, signers, fields,
+          pages, signers, fields, signingMode, expiresInDays,
         }),
       });
       if (!createRes.ok) {
@@ -330,14 +333,68 @@ export default function Home() {
             </div>
           </div>
 
+          <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", padding: 12, marginBottom: 14 }}>
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98", marginBottom: 10 }}>SENDING</div>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
+              {[
+                { v: "parallel", label: "Everyone at once", hint: "All signers get their link immediately and can sign in any order." },
+                { v: "sequential", label: "One at a time", hint: "Each signer is emailed only when the person before them has finished." },
+              ].map((o) => (
+                <button
+                  key={o.v}
+                  type="button"
+                  onClick={() => setSigningMode(o.v)}
+                  title={o.hint}
+                  style={{
+                    ...chipBtn,
+                    borderColor: signingMode === o.v ? "var(--ink)" : "var(--line)",
+                    background: signingMode === o.v ? "var(--ink)" : "#fff",
+                    color: signingMode === o.v ? "#fff" : "#102A43",
+                  }}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: 14, color: "#8A8F98", lineHeight: 1.45, margin: "0 0 12px" }}>
+              {signingMode === "sequential"
+                ? "Signers are emailed in the order listed above — each one only when the person before them finishes."
+                : "Every signer gets their link as soon as you pay, and they can sign in any order."}
+            </p>
+
+            <label style={{ fontSize: 16, color: "#5B5F6B", fontFamily: "'Plus Jakarta Sans', sans-serif", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              Expires after
+              <select
+                value={expiresInDays}
+                onChange={(e) => setExpiresInDays(Number(e.target.value))}
+                style={{ ...inputStyle, width: "auto", padding: "6px 10px" }}
+              >
+                {EXPIRY_CHOICES.map((d) => (
+                  <option key={d} value={d}>{d === 0 ? "never" : `${d} days`}</option>
+                ))}
+              </select>
+              <span style={{ fontSize: 14, color: "#8A8F98" }}>
+                unsigned signers are reminded along the way
+              </span>
+            </label>
+          </div>
+
           <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 400, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 12px" }}>
            Complete fields above and locate page where you want to place signatures. Select signer then click desired fields. Scroll down to find fields and drag them to desired location. Larger documents take longer to load.
           </p>
 
           <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-            <button onClick={() => addField("signature")} disabled={!activeSignerId} style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}><Plus size={13} /> Signature field</button>
-            <button onClick={() => addField("date")} disabled={!activeSignerId} style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}><Plus size={13} /> Date field</button>
-            <button onClick={() => addField("text")} disabled={!activeSignerId} style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}><Plus size={13} /> Text field</button>
+            {FIELD_KINDS.map((k) => (
+              <button
+                key={k}
+                onClick={() => addField(k)}
+                disabled={!activeSignerId}
+                style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}
+              >
+                <Plus size={13} /> {FIELD_LABELS[k]} field
+              </button>
+            ))}
           </div>
 
           <div ref={containerRef} style={{ position: "relative", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", background: "#fff" }}>

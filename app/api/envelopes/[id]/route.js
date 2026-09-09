@@ -2,11 +2,23 @@ import { NextResponse } from "next/server";
 import { getEnvelope, updateEnvelopeFields, computeDocumentHash, setDocumentHash } from "@/lib/db";
 import { sendTurnNotice, sendCompletionNotice } from "@/lib/email";
 import { clientIp, clientUserAgent } from "@/lib/request";
+import { blockedReason } from "@/lib/guards";
 
 export async function GET(req, { params }) {
   const envelope = getEnvelope(params.id);
   if (!envelope) return NextResponse.json({ error: "not found" }, { status: 404 });
   return NextResponse.json(envelope);
+}
+
+// Signers who still owe a signature, in the order the sender listed
+// them. In sequential mode the first entry is whose turn it is; in
+// parallel mode this is only used to decide who, if anyone, still needs
+// chasing.
+function outstandingSigners(envelope) {
+  return envelope.signers.filter((s) => {
+    const theirs = envelope.fields.filter((f) => f.signerId === s.id);
+    return theirs.length > 0 && !theirs.every((f) => f.value);
+  });
 }
 
 // body: { fields: [{ id, value }], signerId, attested: true, reviewedAllPages: true }
@@ -16,26 +28,23 @@ export async function PATCH(req, { params }) {
   const { fields, signerId, attested, reviewedAllPages } = body;
   const before = getEnvelope(params.id);
   if (!before) return NextResponse.json({ error: "not found" }, { status: 404 });
-  if (before.status === "pending_payment") {
-    return NextResponse.json({ error: "this envelope hasn't been paid for yet" }, { status: 402 });
-  }
 
-  // Signing is not replayable. Without these checks, anyone holding a
-  // signing link can re-submit after the fact: each replay appends
-  // another "signed" event to the audit log with a fresh timestamp and
-  // IP, and — on a completed envelope — re-sends the completion email
-  // to every party. The audit trail is the evidentiary value of this
-  // whole product, so a spurious event in it is worse than the extra
-  // email. Mirrors the idempotency guard in finalizeEnvelopePayment.
-  if (before.status === "completed") {
-    return NextResponse.json({ error: "this envelope is already complete" }, { status: 409 });
-  }
-  if (before.status === "declined") {
-    return NextResponse.json({ error: "a signer declined this envelope, so it can't be signed" }, { status: 409 });
-  }
-  if (before.status === "voided") {
-    return NextResponse.json({ error: "the sender voided this envelope, so it can't be signed" }, { status: 409 });
-  }
+  // Signing is not replayable, and a terminal envelope never reopens.
+  // Without this, anyone holding a signing link can re-submit after the
+  // fact: each replay appends another "signed" event to the audit log
+  // with a fresh timestamp and IP, and — on a completed envelope —
+  // re-sends the completion email to every party. The audit trail is
+  // the evidentiary value of this whole product, so a spurious event in
+  // it is worse than the extra email. The blocked set lives in
+  // lib/guards.js so every route agrees on it.
+  const blocked = blockedReason(before, {
+    pending_payment: "this envelope hasn't been paid for yet",
+    completed: "this envelope is already complete",
+    declined: "a signer declined this envelope, so it can't be signed",
+    voided: "the sender voided this envelope, so it can't be signed",
+    expired: "this envelope expired before everyone signed, so it can't be signed",
+  });
+  if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
 
   const priorFields = before.fields.filter((f) => f.signerId === signerId);
   if (priorFields.length > 0 && priorFields.every((f) => f.value)) {
@@ -62,6 +71,22 @@ export async function PATCH(req, { params }) {
     return NextResponse.json({ error: "signer not found" }, { status: 404 });
   }
 
+  // Sequential envelopes enforce their order here rather than relying on
+  // who happens to hold a link. Until now nothing enforced order at all:
+  // every signer was emailed at payment and signer three could sign
+  // before signer one, while the emails said "it's your turn" — so the
+  // order was a suggestion the product appeared to make and did not
+  // keep. Parallel envelopes deliberately skip this check.
+  if (before.signingMode === "sequential") {
+    const queue = outstandingSigners(before);
+    const current = queue[0];
+    if (current && current.id !== signerId) {
+      return NextResponse.json({
+        error: `This document is being signed in order, and it isn't your turn yet. ${current.name || "Another signer"} needs to sign first — you'll be emailed when it reaches you.`,
+      }, { status: 403 });
+    }
+  }
+
   // Server-recorded, not client-reported — this is what gives the audit
   // trail evidentiary weight. The signer's browser never gets a say in
   // what IP or timestamp gets written down.
@@ -81,10 +106,7 @@ export async function PATCH(req, { params }) {
 
   // The document fingerprint is computed here, server-side, from the
   // page files actually on disk plus the final field values — once,
-  // at the moment of completion, and then stored. It used to be
-  // recomputed in each viewer's browser from canvas output, which meant
-  // two people could see two different hashes for the same document and
-  // nothing authoritative existed to compare against.
+  // at the moment of completion, and then stored.
   if (updated.status === "completed" && !updated.documentHash) {
     try {
       const withHash = setDocumentHash(params.id, computeDocumentHash(updated));
@@ -96,20 +118,15 @@ export async function PATCH(req, { params }) {
     }
   }
 
-  // Figure out signing order from the signers array and notify whoever is next.
-  const order = updated.signers.map((s) => s.id);
-  const currentIdx = order.indexOf(signerId);
-  const nextSigner = updated.signers[currentIdx + 1];
-  const currentSignerDone = updated.fields
-    .filter((f) => f.signerId === signerId)
-    .every((f) => f.value);
+  // Whose turn is next. Only meaningful in sequential mode: in parallel
+  // mode everybody was invited at payment, so a "your turn" email would
+  // be a second, contradictory nudge for a link they already have.
+  const nextSigner = updated.signingMode === "sequential" ? outstandingSigners(updated)[0] : null;
 
   try {
     if (updated.status === "completed") {
       // Everyone who was part of this envelope gets the final document —
-      // the sender AND every signer with a real email address. Previously
-      // this only notified the sender, leaving signers with no way to
-      // ever receive their own copy of what they signed.
+      // the sender AND every signer with a real email address.
       const recipients = [];
       if (updated.senderEmail) recipients.push(updated.senderEmail);
       for (const s of updated.signers) {
@@ -134,7 +151,7 @@ export async function PATCH(req, { params }) {
           notifyError: failures.map((f) => String(f.reason?.message || f.reason)).join("; "),
         });
       }
-    } else if (currentSignerDone && nextSigner && nextSigner.email && !nextSigner.isSelf) {
+    } else if (nextSigner && nextSigner.email && !nextSigner.isSelf) {
       await sendTurnNotice({
         to: nextSigner.email,
         signerName: nextSigner.name,

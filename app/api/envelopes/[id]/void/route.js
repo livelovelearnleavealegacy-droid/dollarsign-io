@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getEnvelope, voidTokenMatches, voidEnvelope } from "@/lib/db";
 import { sendVoidNotice } from "@/lib/email";
 import { clientIp, clientUserAgent } from "@/lib/request";
+import { blockedReason } from "@/lib/guards";
 
 // Step two. Requires the token emailed to senderEmail, so only whoever
 // controls that address can get here.
@@ -18,18 +19,14 @@ export async function POST(req, { params }) {
   const envelope = getEnvelope(params.id);
   if (!envelope) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  if (envelope.status === "pending_payment") {
-    return NextResponse.json({ error: "This envelope hasn't been paid for yet." }, { status: 402 });
-  }
-  if (envelope.status === "completed") {
-    return NextResponse.json({ error: "This envelope finished before the void went through, so there was nothing left to cancel." }, { status: 409 });
-  }
-  if (envelope.status === "declined") {
-    return NextResponse.json({ error: "A signer declined this envelope, so it's already closed." }, { status: 409 });
-  }
-  if (envelope.status === "voided") {
-    return NextResponse.json({ error: "This envelope has already been voided." }, { status: 409 });
-  }
+  const blocked = blockedReason(envelope, {
+    pending_payment: "This envelope hasn't been paid for yet.",
+    completed: "This envelope finished before the void went through, so there was nothing left to cancel.",
+    declined: "A signer declined this envelope, so it's already closed.",
+    voided: "This envelope has already been voided.",
+    expired: "This envelope expired before the void went through, so it is already closed.",
+  });
+  if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
 
   // Constant-time comparison plus a 24-hour expiry, both in the db layer.
   if (!voidTokenMatches(params.id, token)) {

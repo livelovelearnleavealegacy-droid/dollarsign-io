@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getEnvelope, declineEnvelope } from "@/lib/db";
 import { sendDeclineNotice } from "@/lib/email";
 import { clientIp, clientUserAgent } from "@/lib/request";
+import { blockedReason } from "@/lib/guards";
 
 // A signer refusing to sign. Authorization comes from the signing link
 // itself: only someone holding this signer's URL can decline as them,
@@ -17,18 +18,14 @@ export async function POST(req, { params }) {
 
   const envelope = getEnvelope(params.id);
   if (!envelope) return NextResponse.json({ error: "not found" }, { status: 404 });
-  if (envelope.status === "pending_payment") {
-    return NextResponse.json({ error: "this envelope hasn't been paid for yet" }, { status: 402 });
-  }
-  if (envelope.status === "completed") {
-    return NextResponse.json({ error: "this envelope is already complete" }, { status: 409 });
-  }
-  if (envelope.status === "declined") {
-    return NextResponse.json({ error: "this envelope has already been declined" }, { status: 409 });
-  }
-  if (envelope.status === "voided") {
-    return NextResponse.json({ error: "the sender voided this envelope" }, { status: 409 });
-  }
+  const blocked = blockedReason(envelope, {
+    pending_payment: "this envelope hasn't been paid for yet",
+    completed: "this envelope is already complete",
+    declined: "this envelope has already been declined",
+    voided: "the sender voided this envelope",
+    expired: "this envelope expired before everyone signed",
+  });
+  if (blocked) return NextResponse.json({ error: blocked.error }, { status: blocked.status });
 
   const signer = envelope.signers.find((s) => s.id === signerId);
   if (!signer) return NextResponse.json({ error: "signer not found" }, { status: 404 });

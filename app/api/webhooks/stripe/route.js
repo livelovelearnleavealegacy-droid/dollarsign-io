@@ -34,8 +34,21 @@ export async function POST(req) {
       // response, and can send the same event more than once. Only act
       // if this envelope is still actually waiting on payment.
       if (envelope && envelope.status === "pending_payment") {
+        // Who gets an invite right now depends on the signing mode.
+        // Parallel (the default, and what this app has always done):
+        // everyone at once. Sequential: only whoever is actually up
+        // first — mailing everybody and then telling them to wait is
+        // how a "signing order" becomes a suggestion nobody keeps.
+        const orderedTargets =
+          envelope.signingMode === "sequential"
+            ? envelope.signers.filter((s) => {
+                const theirs = envelope.fields.filter((f) => f.signerId === s.id);
+                return theirs.length > 0;
+              }).slice(0, 1)
+            : envelope.signers;
+
         const emailEvents = [];
-        for (const signer of envelope.signers) {
+        for (const signer of orderedTargets) {
           if (signer.isSelf || !signer.email) continue;
           try {
             await sendSigningInvite({

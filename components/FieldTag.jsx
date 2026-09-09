@@ -1,6 +1,9 @@
 "use client";
 import { useRef } from "react";
-import { PenTool, CalendarDays, Type, X } from "lucide-react";
+import { PenTool, CalendarDays, Type, Check, X } from "lucide-react";
+import { CHECKED } from "@/lib/shared";
+
+const KIND_SUFFIX = { text: " · title", initials: " · initials", checkbox: " · checkbox" };
 
 export default function FieldTag({ field, signer, onDrag, onRemove, containerRef, locked }) {
   const dragging = useRef(false);
@@ -15,6 +18,17 @@ export default function FieldTag({ field, signer, onDrag, onRemove, containerRef
   };
   const onUp = () => { dragging.current = false; };
 
+  const icon =
+    field.kind === "signature" || field.kind === "initials" ? <PenTool size={12} color={signer.color} />
+    : field.kind === "date" ? <CalendarDays size={12} color={signer.color} />
+    : field.kind === "checkbox" ? <Check size={12} color={signer.color} />
+    : <Type size={12} color={signer.color} />;
+
+  // Initials sit in margins next to dense text, so the tag has to be
+  // physically smaller than a signature tag or it covers the clause it
+  // belongs to while the sender is placing it.
+  const isSmall = field.kind === "initials" || field.kind === "checkbox";
+
   return (
     <div
       onPointerDown={onDown} onPointerMove={onMove} onPointerUp={onUp}
@@ -24,26 +38,25 @@ export default function FieldTag({ field, signer, onDrag, onRemove, containerRef
         border: `1.5px solid ${signer.color}`, borderRadius: 5,
         padding: field.kind === "signature" ? "5px 10px" : "4px 9px",
         display: "flex", alignItems: "center", gap: 6, touchAction: "none",
-        boxShadow: "0 2px 6px rgba(16,42,67,0.12)", userSelect: "none", minWidth: 80,
+        boxShadow: "0 2px 6px rgba(16,42,67,0.12)", userSelect: "none",
+        minWidth: isSmall ? 44 : 80,
       }}
     >
       {field.value ? (
-        field.kind === "signature" ? (
+        field.kind === "signature" || field.kind === "initials" ? (
           field.value.type === "image"
-            ? <img src={field.value.data} alt="signature" style={{ height: 26, display: "block" }} />
+            ? <img src={field.value.data} alt={field.kind} style={{ height: field.kind === "initials" ? 18 : 26, display: "block" }} />
             : <span style={{ fontFamily: "'Caveat', cursive", fontSize: 22, color: "#102A43" }}>{field.value.data}</span>
-        ) : field.kind === "date" ? (
-          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#102A43" }}>{field.value}</span>
+        ) : field.kind === "checkbox" ? (
+          <CheckBox checked={field.value === CHECKED} />
         ) : (
           <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#102A43" }}>{field.value}</span>
         )
       ) : (
         <>
-          {field.kind === "signature" ? <PenTool size={12} color={signer.color} />
-            : field.kind === "date" ? <CalendarDays size={12} color={signer.color} />
-            : <Type size={12} color={signer.color} />}
+          {icon}
           <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: signer.color }}>
-            {signer.name}{field.kind === "text" ? " · title" : ""}
+            {signer.name}{KIND_SUFFIX[field.kind] || ""}
           </span>
         </>
       )}
@@ -53,5 +66,19 @@ export default function FieldTag({ field, signer, onDrag, onRemove, containerRef
         </button>
       )}
     </div>
+  );
+}
+
+// An unchecked box is drawn, not omitted. "They were asked and said no"
+// and "this was never presented" are different facts, and the PDF makes
+// the same distinction.
+export function CheckBox({ checked, size = 16 }) {
+  return (
+    <span style={{
+      width: size, height: size, border: "1.6px solid #102A43", borderRadius: 3,
+      display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+    }}>
+      {checked ? <Check size={size - 4} color="#102A43" strokeWidth={3} /> : null}
+    </span>
   );
 }

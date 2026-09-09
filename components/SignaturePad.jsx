@@ -1,14 +1,53 @@
 "use client";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { PenTool, X, Check, RotateCcw } from "lucide-react";
 import { ov, iconBtn, tabBtn, tabBtnActive, linkBtn, inputStyle, primaryBtn } from "@/lib/shared";
 
-export default function SignaturePad({ onConfirm, onCancel }) {
+/* Remembering a signature is a per-device convenience, not an account.
+   It lives in this browser's localStorage and never reaches the server,
+   so it survives a repeat signing on the same phone and nowhere else —
+   which is exactly the amount of memory a product with no accounts
+   should have. Signatures and initials are stored under separate keys:
+   offering someone's full signature when a page asks for initials would
+   put the wrong mark on the document. */
+const STORAGE_KEYS = { signature: "ds_saved_signature_v1", initials: "ds_saved_initials_v1" };
+
+function readSaved(kind) {
+  try {
+    const v = window.localStorage.getItem(STORAGE_KEYS[kind] || STORAGE_KEYS.signature);
+    return typeof v === "string" && v.startsWith("data:image/") ? v : null;
+  } catch {
+    // Private mode, blocked site data, or a browser that throws on
+    // access. A missing convenience must never block signing.
+    return null;
+  }
+}
+function writeSaved(kind, dataUrl) {
+  try { window.localStorage.setItem(STORAGE_KEYS[kind] || STORAGE_KEYS.signature, dataUrl); } catch { /* non-fatal */ }
+}
+function clearSaved(kind) {
+  try { window.localStorage.removeItem(STORAGE_KEYS[kind] || STORAGE_KEYS.signature); } catch { /* non-fatal */ }
+}
+
+export default function SignaturePad({ onConfirm, onCancel, kind = "signature" }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const [mode, setMode] = useState("draw");
   const [typed, setTyped] = useState("");
   const [empty, setEmpty] = useState(true);
+  const [saved, setSaved] = useState(null);
+
+  const isInitials = kind === "initials";
+  const title = isInitials ? "Add your initials" : "Sign the envelope";
+  const typePlaceholder = isInitials ? "Type your initials" : "Type your full name";
+
+  // localStorage is only available in the browser, so this has to wait
+  // for mount rather than run during render.
+  useEffect(() => {
+    const v = readSaved(kind);
+    setSaved(v);
+    if (v) setMode("saved");
+  }, [kind]);
 
   const pos = (e) => {
     const r = canvasRef.current.getBoundingClientRect();
@@ -32,6 +71,7 @@ export default function SignaturePad({ onConfirm, onCancel }) {
     c.getContext("2d").clearRect(0, 0, c.width, c.height);
     setEmpty(true);
   };
+
   // Renders the typed name to a transparent PNG using the same Caveat
   // face shown in the preview above. Two reasons this beats storing the
   // string: the final PDF is built server-side and has no access to a
@@ -58,16 +98,35 @@ export default function SignaturePad({ onConfirm, onCancel }) {
     return c.toDataURL("image/png");
   };
 
+  const apply = (dataUrl) => {
+    writeSaved(kind, dataUrl);
+    onConfirm({ type: "image", data: dataUrl });
+  };
+
   const confirm = () => {
+    if (mode === "saved") {
+      if (!saved) return;
+      onConfirm({ type: "image", data: saved });
+      return;
+    }
     if (mode === "draw") {
       if (empty) return;
-      onConfirm({ type: "image", data: canvasRef.current.toDataURL("image/png") });
+      apply(canvasRef.current.toDataURL("image/png"));
     } else {
       const name = typed.trim();
       if (!name) return;
-      onConfirm({ type: "image", data: typedToPng(name) });
+      apply(typedToPng(name));
     }
   };
+
+  const forget = () => {
+    clearSaved(kind);
+    setSaved(null);
+    setMode("draw");
+  };
+
+  const modes = saved ? ["saved", "draw", "type"] : ["draw", "type"];
+  const modeLabel = { saved: "Saved", draw: "Draw", type: "Type" };
 
   return (
     <div style={ov.backdrop}>
@@ -75,18 +134,34 @@ export default function SignaturePad({ onConfirm, onCancel }) {
         <div style={ov.headRow}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <PenTool size={17} color="var(--accent)" />
-            <h3 style={ov.title}>Sign the envelope</h3>
+            <h3 style={ov.title}>{title}</h3>
           </div>
           <button onClick={onCancel} style={iconBtn}><X size={18} /></button>
         </div>
+
         <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-          {["draw", "type"].map((m) => (
+          {modes.map((m) => (
             <button key={m} onClick={() => setMode(m)} style={{ ...tabBtn, ...(mode === m ? tabBtnActive : {}) }}>
-              {m === "draw" ? "Draw" : "Type"}
+              {modeLabel[m]}
             </button>
           ))}
         </div>
-        {mode === "draw" ? (
+
+        {mode === "saved" && saved && (
+          <div>
+            <div style={{ padding: "18px 12px", background: "#fff", border: "1.5px dashed var(--line)", borderRadius: 6, textAlign: "center", minHeight: 90, display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <img src={saved} alt={isInitials ? "saved initials" : "saved signature"} style={{ maxHeight: 70, maxWidth: "100%" }} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98" }}>
+                saved on this device only
+              </span>
+              <button onClick={forget} style={linkBtn}><X size={12} style={{ marginRight: 4 }} />forget</button>
+            </div>
+          </div>
+        )}
+
+        {mode === "draw" && (
           <>
             <canvas
               ref={canvasRef} width={400} height={150}
@@ -94,20 +169,27 @@ export default function SignaturePad({ onConfirm, onCancel }) {
               style={{ width: "100%", height: 150, background: "#fff", border: "1.5px dashed var(--line)", borderRadius: 6, touchAction: "none", cursor: "crosshair" }}
             />
             <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8 }}>
-              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98" }}>sign above the line</span>
+              <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98" }}>
+                {isInitials ? "initial above the line" : "sign above the line"}
+              </span>
               <button onClick={clear} style={linkBtn}><RotateCcw size={12} style={{ marginRight: 4 }} />clear</button>
             </div>
           </>
-        ) : (
+        )}
+
+        {mode === "type" && (
           <div>
-            <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder="Type your full name" style={{ ...inputStyle, fontSize: 16 }} />
+            <input autoFocus value={typed} onChange={(e) => setTyped(e.target.value)} placeholder={typePlaceholder} style={{ ...inputStyle, fontSize: 16 }} />
             <div style={{ marginTop: 14, padding: "18px 12px", background: "#fff", border: "1.5px dashed var(--line)", borderRadius: 6, textAlign: "center" }}>
-              <span style={{ fontFamily: "'Caveat', cursive", fontSize: 34, color: "#102A43" }}>{typed || "Your signature"}</span>
+              <span style={{ fontFamily: "'Caveat', cursive", fontSize: 34, color: "#102A43" }}>
+                {typed || (isInitials ? "Your initials" : "Your signature")}
+              </span>
             </div>
           </div>
         )}
+
         <button onClick={confirm} style={{ ...primaryBtn, width: "100%", marginTop: 16 }}>
-          <Check size={16} style={{ marginRight: 6 }} /> Apply signature
+          <Check size={16} style={{ marginRight: 6 }} /> {isInitials ? "Apply initials" : "Apply signature"}
         </button>
       </div>
     </div>

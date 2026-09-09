@@ -1,8 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail, Ban } from "lucide-react";
+import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail, Ban, PenTool, Copy, ArrowRight } from "lucide-react";
 import Seal from "@/components/Seal";
-import { todayStr } from "@/lib/shared";
+import { todayStr, inputStyle, primaryBtn } from "@/lib/shared";
+import { isTerminal as statusIsTerminal } from "@/lib/guards";
 
 export default function EnvelopeStatusPage({ params }) {
   const { id } = params;
@@ -19,6 +20,13 @@ export default function EnvelopeStatusPage({ params }) {
   // Nothing is cancelled until the sender clicks the link in it.
   const [voidRequesting, setVoidRequesting] = useState(false);
   const [voidMsg, setVoidMsg] = useState(null);
+
+  // "Send another like this" — a copy of this envelope's document and
+  // field layout, with the signer names/emails editable before paying.
+  const [showCopy, setShowCopy] = useState(false);
+  const [copySigners, setCopySigners] = useState([]);
+  const [copying, setCopying] = useState(false);
+  const [copyError, setCopyError] = useState(null);
 
   useEffect(() => {
     fetch(`/api/envelopes/${id}`)
@@ -51,6 +59,40 @@ export default function EnvelopeStatusPage({ params }) {
     }
   };
 
+  const openCopy = () => {
+    setCopyError(null);
+    setCopySigners(envelope.signers.map((s) => ({ id: s.id, name: s.name || "", email: s.email || "", isSelf: !!s.isSelf })));
+    setShowCopy(true);
+  };
+
+  // Creates the copy, then hands straight off to Stripe. A copy is a
+  // new envelope and a new $1.99 — nothing is duplicated for free.
+  const sendCopy = async () => {
+    setCopying(true);
+    setCopyError(null);
+    try {
+      const dupRes = await fetch(`/api/envelopes/${id}/duplicate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signers: copySigners }),
+      });
+      const dup = await dupRes.json();
+      if (!dupRes.ok) throw new Error(dup.error || "Couldn't copy this envelope.");
+
+      const checkoutRes = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ envelopeId: dup.envelope.id }),
+      });
+      const checkout = await checkoutRes.json();
+      if (!checkoutRes.ok) throw new Error(checkout.error || "Couldn't start checkout.");
+      window.location.href = checkout.url;
+    } catch (err) {
+      setCopyError(err.message);
+      setCopying(false);
+    }
+  };
+
   const requestVoid = async () => {
     setVoidRequesting(true);
     setVoidMsg(null);
@@ -74,10 +116,21 @@ export default function EnvelopeStatusPage({ params }) {
     return theirs.length > 0 && theirs.every((f) => f.value);
   };
 
-  const isTerminal = ["completed", "declined", "voided"].includes(envelope.status);
+  const isTerminal = statusIsTerminal(envelope.status);
   const anyPending = !isTerminal && envelope.signers.some(
     (s) => !signerStatus(s) && s.email && !s.isSelf
   );
+
+  // Everyone who still owes a signature, in listed order. In sequential
+  // mode only the first of them can actually sign right now, so only
+  // that one is offered the in-person link — pointing at a signer the
+  // server will refuse would be worse than not offering it.
+  const outstanding = envelope.signers.filter((s) => !signerStatus(s) &&
+    envelope.fields.some((f) => f.signerId === s.id));
+  const inPersonEligible = isTerminal
+    ? []
+    : envelope.signingMode === "sequential" ? outstanding.slice(0, 1) : outstanding;
+  const canSignInPerson = (s) => inPersonEligible.some((x) => x.id === s.id);
 
   return (
     <div style={{ maxWidth: 480, margin: "0 auto", padding: "40px 20px", textAlign: "center" }}>
@@ -89,12 +142,29 @@ export default function EnvelopeStatusPage({ params }) {
           ? "Signing declined"
           : envelope.status === "voided"
           ? "Envelope voided"
+          : envelope.status === "expired"
+          ? "Envelope expired"
           : "Waiting on signers"}
       </h2>
       {envelope.documentName && (
         <p style={{ ...p, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>{envelope.documentName}</p>
       )}
-      <p style={p}>Tracking {envelope.trackingId} · {envelope.pages.length} page{envelope.pages.length !== 1 ? "s" : ""}</p>
+      <p style={p}>
+        Tracking {envelope.trackingId} · {envelope.pages.length} page{envelope.pages.length !== 1 ? "s" : ""}
+        {envelope.status === "sent" && envelope.expiresAt
+          ? ` · expires ${new Date(envelope.expiresAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`
+          : ""}
+      </p>
+
+      {envelope.status === "expired" && (
+        <div style={{ background: "#FDF3F0", border: "1px solid #E7BCAE", borderRadius: 10, padding: "14px 16px", textAlign: "left", marginBottom: 20 }}>
+          <p style={{ fontSize: 16, color: "#8A3212", lineHeight: 1.5, margin: 0 }}>
+            This envelope reached its expiry date before everyone signed, so every signing link stopped
+            working. Use <strong>Send another like this</strong> below to send it again with the same document
+            and field layout.
+          </p>
+        </div>
+      )}
 
       {envelope.status === "declined" && (() => {
         const ev = (envelope.auditLog || []).find((e) => e.type === "declined");
@@ -134,6 +204,21 @@ export default function EnvelopeStatusPage({ params }) {
                 <div style={{ flex: 1, fontSize: 16, color: "var(--ink)" }}>{s.name}</div>
                 <span style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: complete ? "#4E8B5A" : "#9AA0AA" }}>{complete ? "signed" : "pending"}</span>
               </div>
+
+              {canSignInPerson(s) && (
+                <div style={{ paddingLeft: 24, marginTop: 6 }}>
+                  <a
+                    href={`/sign/${id}/${s.id}`}
+                    style={{ ...resendBtn, textDecoration: "none", cursor: "pointer" }}
+                  >
+                    <PenTool size={13} style={{ marginRight: 5 }} />
+                    Sign in person
+                  </a>
+                  <span style={{ fontSize: 13, color: "#9AA0AA", marginLeft: 8 }}>
+                    opens their signing page on this device
+                  </span>
+                </div>
+              )}
 
               {canResend && (
                 <div style={{ paddingLeft: 24, marginTop: 4 }}>
@@ -205,6 +290,66 @@ export default function EnvelopeStatusPage({ params }) {
           )}
         </div>
       )}
+
+      <div style={{ borderTop: "1px solid var(--line)", paddingTop: 18, marginBottom: 24, textAlign: "left" }}>
+        {!showCopy ? (
+          <>
+            <p style={{ fontSize: 13, color: "#8A8F98", lineHeight: 1.5, margin: "0 0 8px" }}>
+              Need to send this same document again — a new tenant, another client, next quarter? Reuse
+              this document and its field layout without setting any of it up again. Signatures are not
+              copied, and it is a new envelope at the usual flat price.
+            </p>
+            <button type="button" onClick={openCopy} style={{ ...resendBtn, cursor: "pointer" }}>
+              <Copy size={13} style={{ marginRight: 5 }} /> Send another like this
+            </button>
+          </>
+        ) : (
+          <div>
+            <p style={{ fontSize: 13, color: "#8A8F98", lineHeight: 1.5, margin: "0 0 10px" }}>
+              Same document, same fields. Change who signs it, then continue to payment. To add or remove
+              signers you will need to build a new envelope, because the fields are attached to these ones.
+            </p>
+            {copySigners.map((s, i) => (
+              <div key={s.id} style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                <input
+                  value={s.name}
+                  onChange={(e) => setCopySigners((cs) => cs.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))}
+                  placeholder="Name"
+                  style={{ ...inputStyle, flex: "1 1 120px", padding: "7px 10px" }}
+                />
+                <input
+                  value={s.email}
+                  onChange={(e) => setCopySigners((cs) => cs.map((x, j) => (j === i ? { ...x, email: e.target.value } : x)))}
+                  placeholder={s.isSelf ? "you sign this one" : "email address"}
+                  disabled={s.isSelf}
+                  style={{ ...inputStyle, flex: "1 1 160px", padding: "7px 10px", opacity: s.isSelf ? 0.55 : 1 }}
+                />
+              </div>
+            ))}
+            {copyError && <p style={{ color: "#C1440E", fontSize: 14, margin: "6px 0" }}>{copyError}</p>}
+            <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+              <button
+                type="button"
+                onClick={() => setShowCopy(false)}
+                disabled={copying}
+                style={{ flex: 1, border: "1px solid var(--line)", background: "#fff", borderRadius: 7, padding: "10px 14px", fontSize: 16, color: "#5B5F6B", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={sendCopy}
+                disabled={copying}
+                style={{ ...primaryBtn, flex: 1, opacity: copying ? 0.6 : 1 }}
+              >
+                {copying ? <Loader2 size={15} className="spin" style={{ marginRight: 6 }} /> : null}
+                {copying ? "Starting checkout…" : "Continue to payment"}
+                {!copying && <ArrowRight size={14} style={{ marginLeft: 6 }} />}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
 
       {envelope.status === "completed" && (
         <div style={{ marginTop: 10 }}>
