@@ -3,6 +3,7 @@ import { useState, useRef, useCallback } from "react";
 import {
   Upload, Download, PenTool, ChevronLeft, ChevronRight,
   Users, Plus, X, ArrowRight, FileText, AlertTriangle, Loader2,
+  Search, Clock, LifeBuoy,
 } from "lucide-react";
 import FieldTag from "@/components/FieldTag";
 import {
@@ -287,6 +288,8 @@ export default function Home() {
                 { icon: <PenTool size={16} />, t: "Draw or Type", d: "Each person receives their own link to sign or type their name." },
                 { icon: <Download size={16} />, t: "Yours to Keep", d: "Final document delivered to all signers by email. Documents recoverable indefinitely." },
                 { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit card processing done by Stripe. We never see your credit card information.` },
+                { icon: <Search size={16} />, t: "Still a Real Document", d: "We sign your original PDF instead of a picture of it, so the finished file stays searchable, selectable, and small." },
+                { icon: <Clock size={16} />, t: "Keeps Things Moving", d: "Automatic reminders, an optional expiry date, and signing either in order or all at once — your choice." },
               ].map((c, i) => (
                 <div key={i} style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16 }}>
                   <div style={{ color: "var(--accent)", marginBottom: 8 }}>{c.icon}</div>
@@ -294,6 +297,24 @@ export default function Home() {
                   <div style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 1.4 }}>{c.d}</div>
                 </div>
               ))}
+            </div>
+
+            {/* Support is a feature here, not fine print. At $1.99 an
+                envelope the only affordable support is the kind people
+                never have to ask for, so the things that make it
+                unnecessary are worth saying out loud. */}
+            <div style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16, marginTop: 16 }}>
+              <div style={{ color: "var(--accent)", marginBottom: 8 }}><LifeBuoy size={16} /></div>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 16, marginBottom: 4, color: "var(--ink)" }}>
+                Hassle-Free Support
+              </div>
+              <div style={{ fontSize: 16, color: "#5B5F6B", lineHeight: 1.45 }}>
+                No account to create and nothing to cancel. Resend an invitation, fix a mistyped address, or look up a
+                document you lost the link to — all yourself, in seconds. If something on our end goes wrong, tell us your
+                tracking number and we&apos;ll make it right, no argument. Real people answer{" "}
+                <a href="mailto:support@dollarsign.io" style={{ color: "#5B5F6B", textDecoration: "underline" }}>support@dollarsign.io</a>{" "}
+                within two business days.
+              </div>
             </div>
           </div>
         </div>

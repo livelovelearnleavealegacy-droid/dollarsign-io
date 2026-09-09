@@ -17,11 +17,11 @@ export const metadata = {
   },
 };
 
-// Every footer link is black, bold, and underlined so it reads as a
-// deliberate offer of help rather than boilerplate. These are the
-// self-service exits — the more people take them, the less support mail
-// there is to answer.
-const footerLink = { color: "#000000", fontWeight: 700, textDecoration: "underline" };
+// The self-service exits — the more people take them, the less support
+// mail there is to answer. Underlined so they still read as links, but
+// at the footer's own size and weight: they should be findable when
+// somebody is looking for help, not shouting at everyone who isn't.
+const footerLink = { color: "#000000", fontWeight: 400, fontSize: 13, textDecoration: "underline" };
 const dot = { color: "#8A8F98", margin: "0 8px" };
 
 export default function RootLayout({ children }) {
