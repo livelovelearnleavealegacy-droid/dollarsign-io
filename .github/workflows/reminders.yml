@@ -1,0 +1,46 @@
+name: Reminders and expiry
+
+# The app has no scheduler of its own, so this workflow is the clock.
+# It calls /api/cron once a day; that endpoint decides what is actually
+# due. Everything it does is idempotent and derived from stored state,
+# so a missed run or a double run changes nothing but timing.
+#
+# Requires two repository settings:
+#   Secret   CRON_TOKEN  — must match the CRON_TOKEN variable in Railway
+#   Variable APP_URL     — optional; defaults to the Railway URL below
+
+on:
+  schedule:
+    # 14:00 UTC — mid-morning in the US, so a nudge lands during a
+    # working day rather than overnight where it gets buried.
+    - cron: "0 14 * * *"
+  workflow_dispatch:
+
+jobs:
+  cron:
+    name: Send due reminders, close expired envelopes
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the cron endpoint
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://dollarsign-io-production.up.railway.app' }}
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+        run: |
+          if [ -z "$CRON_TOKEN" ]; then
+            echo "CRON_TOKEN secret is not set — add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # The token goes in a header, never the URL: query strings end
+          # up in access logs and proxy logs.
+          code=$(curl -sS -o response.json -w "%{http_code}" \
+            -X POST "$APP_URL/api/cron" \
+            -H "x-cron-token: $CRON_TOKEN")
+          echo "HTTP $code"
+          cat response.json
+          echo
+          if [ "$code" = "404" ]; then
+            echo "404 means CRON_TOKEN is unset or mismatched on the server."
+            exit 1
+          fi
+          [ "$code" = "200" ]
