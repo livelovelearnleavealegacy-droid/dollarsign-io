@@ -2,8 +2,19 @@ import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 
 export const metadata = {
+  // Without metadataBase, Next resolves the Open Graph image against
+  // http://localhost:3000 and every shared link previews with a broken
+  // image. APP_URL is the same value Railway uses for signing links.
+  metadataBase: new URL(process.env.APP_URL || "https://dollarsign.io"),
   title: "DollarSign.io — Pay as you go. Sign with confidence.",
   description: "Upload a document, add signers, sign it. Pay per envelope, no subscription.",
+  openGraph: {
+    siteName: "DollarSign.io",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+  },
 };
 
 // Every footer link is black, bold, and underlined so it reads as a
