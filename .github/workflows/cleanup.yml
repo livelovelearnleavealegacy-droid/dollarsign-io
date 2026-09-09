@@ -1,0 +1,68 @@
+name: Orphan cleanup
+
+# Deletes page images and source PDFs that no envelope references.
+#
+# MANUAL ONLY, and a dry run unless you tick the box. There is no
+# schedule here on purpose: this job deletes customer files, and the
+# first few times it runs a person should read what it proposes before
+# it happens. Once a dry run has looked right a couple of times, this
+# can be given a schedule — the endpoint is already safe to call
+# repeatedly.
+#
+# Files newer than the minimum age are never touched. A page image is
+# written BEFORE the envelope that references it exists, so a recent
+# unreferenced file is not garbage, it is a document somebody is in the
+# middle of preparing.
+#
+# Requires the ADMIN_TOKEN repository secret.
+on:
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: "Actually delete (unticked = dry run, deletes nothing)"
+        required: false
+        type: boolean
+        default: false
+      min_age_days:
+        description: "Only touch orphans older than this many days"
+        required: false
+        default: "7"
+
+jobs:
+  cleanup:
+    name: Sweep orphaned files
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Run cleanup
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+          APPLY: ${{ github.event.inputs.apply }}
+          MIN_AGE: ${{ github.event.inputs.min_age_days }}
+        run: |
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "ADMIN_TOKEN secret is not set."
+            exit 1
+          fi
+
+          QS="minAgeDays=${MIN_AGE:-7}"
+          if [ "$APPLY" = "true" ]; then
+            QS="$QS&apply=1"
+            echo "APPLY MODE — files will be deleted."
+          else
+            echo "DRY RUN — nothing will be deleted."
+          fi
+
+          CODE=$(curl -sS -o /tmp/cleanup.json -w '%{http_code}' --max-time 120 \
+            -X POST -H "x-admin-token: $ADMIN_TOKEN" \
+            "https://dollarsign.io/api/admin/cleanup?$QS" || echo "000")
+
+          echo "--- result ---"
+          cat /tmp/cleanup.json
+          echo ""
+
+          if [ "$CODE" != "200" ]; then
+            echo "Cleanup endpoint returned HTTP $CODE."
+            exit 1
+          fi
