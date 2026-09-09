@@ -1,0 +1,83 @@
+name: Storage watch
+
+# Weekly look at what is actually on the persistent volume, and how
+# much room is left.
+#
+# This exists because of a real incident: the orphaned-file report
+# accounted for 146 MB of a 991 MB volume and looked healthy, while
+# 843 MB of dead rows sat inside the database file, which nothing
+# measured. The job fails — and so emails you — when the volume crosses
+# 80% used, or when a large amount of space is used by something none
+# of the app's own accounting can explain.
+#
+# Requires a repository secret named ADMIN_TOKEN, matching the
+# ADMIN_TOKEN variable in Railway. Settings → Secrets and variables →
+# Actions → New repository secret.
+on:
+  workflow_dispatch:
+  schedule:
+    # Mondays 08:30 UTC, half an hour after the test suite so the two
+    # don't report at the same moment.
+    - cron: "30 8 * * 1"
+
+jobs:
+  storage:
+    name: Volume report
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Read storage report
+        env:
+          ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
+        run: |
+          if [ -z "$ADMIN_TOKEN" ]; then
+            echo "ADMIN_TOKEN secret is not set — add it under"
+            echo "Settings → Secrets and variables → Actions."
+            exit 1
+          fi
+
+          # Token goes in a header, never the query string: URLs end up
+          # in logs and referrers, headers do not.
+          CODE=$(curl -sS -o /tmp/storage.json -w '%{http_code}' --max-time 30 \
+            -H "x-admin-token: $ADMIN_TOKEN" \
+            "https://dollarsign.io/api/admin/storage" || echo "000")
+
+          if [ "$CODE" != "200" ]; then
+            echo "Storage endpoint returned HTTP $CODE."
+            echo "A 404 here means ADMIN_TOKEN doesn't match the value in Railway."
+            exit 1
+          fi
+
+          echo "--- storage report ---"
+          cat /tmp/storage.json
+          echo ""
+          echo "----------------------"
+
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("/tmp/storage.json", "utf8"));
+            const v = r.volume || {};
+            console.log("database:      " + r.database.fileMb + " MB (wal " + r.database.walMb + " MB)");
+            console.log("page images:   " + r.pageImages.mb + " MB across " + r.pageImages.files + " files");
+            console.log("source PDFs:   " + r.sourcePdfs.mb + " MB across " + r.sourcePdfs.files + " files");
+            console.log("accounted for: " + r.accountedForMb + " MB");
+            console.log("volume used:   " + v.usedMb + " / " + v.totalMb + " MB (" + v.usedPct + "%)");
+            console.log("unaccounted:   " + r.unaccountedMb + " MB");
+
+            let bad = false;
+            if (v.usedPct != null && v.usedPct >= 80) {
+              console.log("");
+              console.log("VOLUME OVER 80% FULL. Run the orphan report, then the cleanup job.");
+              bad = true;
+            }
+            // Space used by something the app cannot name is the exact
+            // shape of the last incident. 50 MB of slack covers
+            // filesystem overhead without hiding a real problem.
+            if (r.unaccountedMb != null && r.unaccountedMb > 50) {
+              console.log("");
+              console.log("More than 50 MB on the volume is unaccounted for by the app.");
+              console.log("Something is using space that none of the reports can see.");
+              bad = true;
+            }
+            process.exit(bad ? 1 : 0);
+          '
