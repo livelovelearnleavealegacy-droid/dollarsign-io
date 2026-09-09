@@ -1,0 +1,57 @@
+name: Uptime
+
+# Checks that the real site — real domain, real certificate — is
+# answering. Hits /api/health every 15 minutes and fails the run if it
+# doesn't come back healthy, which makes GitHub email you.
+#
+# Deliberately points at https://dollarsign.io rather than the Railway
+# subdomain: this way one check covers the app, DNS, and TLS renewal.
+# A certificate that quietly fails to renew looks exactly like an
+# outage to a customer, and nothing else here would notice it.
+#
+# TWO LIMITS, worth knowing rather than discovering:
+#   1. GitHub's scheduler is best-effort. A run can be late by several
+#      minutes, and under load it can be skipped. This is a safety net,
+#      not a pager — an external monitor is still the better alarm.
+#   2. GitHub disables scheduled workflows in a repository with no
+#      activity for 60 days, and emails you when it does. If you stop
+#      committing for two months, re-enable it in the Actions tab.
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+jobs:
+  health:
+    name: Health check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check https://dollarsign.io/api/health
+        run: |
+          URL="https://dollarsign.io/api/health"
+
+          # Three attempts, 20s apart. A single failed request is
+          # usually a blip — a deploy swapping containers, a dropped
+          # packet. Alerting on one would train you to ignore the
+          # alerts, which is worse than not having them.
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt: $URL"
+            CODE=$(curl -sS -o /tmp/health.json -w '%{http_code}' --max-time 20 "$URL" || echo "000")
+            BODY=$(cat /tmp/health.json 2>/dev/null || echo "")
+            echo "  HTTP $CODE — $BODY"
+
+            if [ "$CODE" = "200" ] && echo "$BODY" | grep -q '"ok":true'; then
+              echo "Healthy."
+              exit 0
+            fi
+
+            if [ "$attempt" -lt 3 ]; then sleep 20; fi
+          done
+
+          echo ""
+          echo "SITE IS NOT HEALTHY after 3 attempts."
+          echo "Last HTTP status: $CODE"
+          echo "Check Railway: https://railway.app/dashboard"
+          exit 1
