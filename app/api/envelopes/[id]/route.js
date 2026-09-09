@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getEnvelope, updateEnvelopeFields, computeDocumentHash, setDocumentHash } from "@/lib/db";
+import { getEnvelope, updateEnvelopeFields, computeDocumentHash, setDocumentHash, appendAuditEvent } from "@/lib/db";
 import { sendTurnNotice, sendCompletionNotice } from "@/lib/email";
 import { clientIp, clientUserAgent } from "@/lib/request";
 import { blockedReason } from "@/lib/guards";
@@ -161,6 +161,20 @@ export async function PATCH(req, { params }) {
         trackingId: updated.trackingId,
         documentName: updated.documentName,
       });
+      // Recorded like every other delivery attempt. Until now this one
+      // email was sent and never written down, so a sequential envelope
+      // could not evidence that the next signer had actually been told
+      // it was their turn — which is precisely the fact somebody would
+      // dispute.
+      const withNotice = appendAuditEvent(params.id, {
+        type: "email_sent",
+        kind: "turn",
+        signerId: nextSigner.id,
+        signerName: nextSigner.name || null,
+        email: nextSigner.email,
+        at: new Date().toISOString(),
+      });
+      if (withNotice) updated = withNotice;
     }
   } catch (err) {
     // Field values are already saved — a notification email failing
