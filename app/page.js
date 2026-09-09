@@ -33,11 +33,17 @@ export default function Home() {
   const fileInputRef = useRef(null);
   const addPageInputRef = useRef(null);
 
-  const uploadPage = async (blob, mime, w, h) => {
+  const uploadPage = async (blob, mime, w, h, source) => {
     const formData = new FormData();
     formData.append("file", blob, `page.${mime.split("/")[1]}`);
     formData.append("width", w);
     formData.append("height", h);
+    // Recorded against the page file itself, so the server can later
+    // establish the link without taking the client's word for it.
+    if (source?.sourceId) {
+      formData.append("sourceId", source.sourceId);
+      formData.append("sourcePage", String(source.sourcePage));
+    }
     const res = await fetch("/api/pages", { method: "POST", body: formData });
     if (!res.ok) throw new Error("Failed to upload a page. Please try again.");
     const { id } = await res.json();
@@ -61,26 +67,59 @@ export default function Home() {
       reader.readAsDataURL(file);
     });
 
+  // Keeps the original PDF. Everything else about a page — the image the
+  // editor and signing page display — is preview material once this
+  // succeeds, because the finished document gets built by stamping the
+  // real pages rather than redrawing pictures of them.
+  //
+  // Deliberately non-fatal: if this fails the pages simply carry no
+  // source and take the old raster path, which still works.
+  const uploadSource = async (file, pageCount) => {
+    try {
+      const formData = new FormData();
+      formData.append("file", file, file.name || "document.pdf");
+      formData.append("pageCount", String(pageCount));
+      const res = await fetch("/api/sources", { method: "POST", body: formData });
+      if (!res.ok) return null;
+      const { id } = await res.json();
+      return id || null;
+    } catch {
+      return null;
+    }
+  };
+
   const fileToPdfPages = async (file) => {
     const pdfjsLib = await import("pdfjs-dist");
     pdfjsLib.GlobalWorkerOptions.workerSrc =
       `https://unpkg.com/pdfjs-dist@${pdfjsLib.version}/build/pdf.worker.min.mjs`;
 
-    const buf = await file.arrayBuffer();
-    const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
-    const pages = [];
+    // A fresh copy for pdf.js: it may take ownership of the buffer it is
+    // handed, and the same File still has to be uploadable afterwards.
+    const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
 
+    const sourceId = await uploadSource(file, pdf.numPages);
+
+    // With the original kept, the rendered image only ever has to look
+    // right on screen, so it is rendered smaller — a page that used to
+    // cost ~450KB now costs a fraction of that. Without a source the
+    // image IS the finished document, so it stays high-resolution.
+    const scale = sourceId ? 1.25 : 2;
+    const quality = sourceId ? 0.8 : 0.85;
+
+    const pages = [];
     for (let i = 1; i <= pdf.numPages; i++) {
       const page = await pdf.getPage(i);
-      const viewport = page.getViewport({ scale: 2 });
+      const viewport = page.getViewport({ scale });
       const canvas = document.createElement("canvas");
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       const ctx = canvas.getContext("2d");
       await page.render({ canvasContext: ctx, viewport }).promise;
 
-      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.85));
-      pages.push(await uploadPage(blob, "image/jpeg", canvas.width, canvas.height));
+      const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", quality));
+      const uploaded = await uploadPage(blob, "image/jpeg", canvas.width, canvas.height,
+        sourceId ? { sourceId, sourcePage: i } : null);
+      pages.push(sourceId ? { ...uploaded, sourceId, sourcePage: i } : uploaded);
     }
     return pages;
   };

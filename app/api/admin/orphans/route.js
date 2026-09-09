@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { listPageFileRows, listReferencedPageIds } from "@/lib/db";
+import { listPageFileRows, listReferencedPageIds, listSourceFileRows, listReferencedSourceIds } from "@/lib/db";
 
 // READ ONLY. Reports which page files are no longer referenced by any
 // envelope, how old they are, and what they cost in disk.
@@ -21,6 +21,7 @@ export async function GET(req) {
 
   const dbPath = process.env.DB_PATH || path.join(process.cwd(), "dollarsign.db");
   const dir = path.join(path.dirname(dbPath), "pages");
+  const sourcesDir = path.join(path.dirname(dbPath), "sources");
 
   const rows = listPageFileRows();
   const referenced = listReferencedPageIds();
@@ -50,6 +51,20 @@ export async function GET(req) {
     oldest.push({ id: r.id, filename: r.filename, sizeKb: Math.round(size / 1024), ageDays: +(ageMs / 864e5).toFixed(1) });
   }
 
+  // Original PDFs are a SECOND kind of file on this volume. Counting
+  // only page images would leave them invisible — the same blind spot
+  // that let 843 MB of dead rows sit unnoticed inside the database.
+  const sourceRows = listSourceFileRows();
+  const referencedSources = listReferencedSourceIds();
+  let sourceOrphans = 0, sourceOrphanBytes = 0, sourceReferencedBytes = 0, sourceMissing = 0;
+  for (const r of sourceRows) {
+    let size = 0;
+    try { size = fs.statSync(path.join(sourcesDir, r.filename)).size; }
+    catch { sourceMissing++; continue; }
+    if (referencedSources.has(r.id)) sourceReferencedBytes += size;
+    else { sourceOrphans++; sourceOrphanBytes += size; }
+  }
+
   oldest.sort((a, b) => b.ageDays - a.ageDays);
   const mb = (b) => +(b / 1048576).toFixed(2);
 
@@ -64,5 +79,14 @@ export async function GET(req) {
     reclaimableMb: mb(orphanBytes),
     orphanAgeBuckets: buckets,
     oldestOrphans: oldest.slice(0, 25),
+    sourceFiles: {
+      inDatabase: sourceRows.length,
+      referencedByAnEnvelope: sourceRows.length - sourceOrphans - sourceMissing,
+      orphaned: sourceOrphans,
+      missingOnDisk: sourceMissing,
+      referencedMb: mb(sourceReferencedBytes),
+      orphanedMb: mb(sourceOrphanBytes),
+    },
+    totalOnVolumeMb: mb(referencedBytes + orphanBytes + sourceReferencedBytes + sourceOrphanBytes),
   });
 }

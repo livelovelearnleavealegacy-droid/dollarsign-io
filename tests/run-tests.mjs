@@ -31,6 +31,11 @@ const SKIP_EMAIL = ENV.SKIP_EMAIL === "1";
 // 1x1 PNG — the smallest thing the upload endpoint will accept.
 const PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
 
+// A real single-page PDF with a valid xref table, used to exercise the
+// source-preservation path. Deliberately a proper document rather than
+// something that merely begins with %PDF.
+const PDF_B64 = "JVBERi0xLjQKMSAwIG9iago8PCAvVHlwZSAvQ2F0YWxvZyAvUGFnZXMgMiAwIFIgPj4KZW5kb2JqCjIgMCBvYmoKPDwgL1R5cGUgL1BhZ2VzIC9LaWRzIFszIDAgUl0gL0NvdW50IDEgPj4KZW5kb2JqCjMgMCBvYmoKPDwgL1R5cGUgL1BhZ2UgL1BhcmVudCAyIDAgUiAvTWVkaWFCb3ggWzAgMCA2MTIgNzkyXSAvQ29udGVudHMgNCAwIFIgL1Jlc291cmNlcyA8PCAvRm9udCA8PCAvRjEgNSAwIFIgPj4gPj4gPj4KZW5kb2JqCjQgMCBvYmoKPDwgL0xlbmd0aCA1NiA+PgpzdHJlYW0KQlQgL0YxIDI0IFRmIDcyIDcwMCBUZCAoRG9sbGFyU2lnbiBzb3VyY2UgZml4dHVyZSkgVGogRVQKZW5kc3RyZWFtCmVuZG9iago1IDAgb2JqCjw8IC9UeXBlIC9Gb250IC9TdWJ0eXBlIC9UeXBlMSAvQmFzZUZvbnQgL0hlbHZldGljYSA+PgplbmRvYmoKeHJlZgowIDYKMDAwMDAwMDAwMCA2NTUzNSBmIAowMDAwMDAwMDA5IDAwMDAwIG4gCjAwMDAwMDAwNTggMDAwMDAgbiAKMDAwMDAwMDExNSAwMDAwMCBuIAowMDAwMDAwMjQxIDAwMDAwIG4gCjAwMDAwMDAzNDcgMDAwMDAgbiAKdHJhaWxlcgo8PCAvU2l6ZSA2IC9Sb290IDEgMCBSID4+CnN0YXJ0eHJlZgo0MTcKJSVFT0YK";
+
 const results = [];
 let currentGroup = "general";
 
@@ -107,6 +112,35 @@ async function uploadPage() {
   const res = await fetch(BASE + "/api/pages", { method: "POST", body: form });
   const body = await res.json();
   if (!res.ok) throw new Error(`page upload failed: ${res.status} ${JSON.stringify(body)}`);
+  return body.id;
+}
+
+function bytesFrom(b64) {
+  return typeof Buffer !== "undefined"
+    ? Buffer.from(b64, "base64")
+    : Uint8Array.from(atob(b64), (c) => c.charCodeAt(0));
+}
+
+async function uploadSource() {
+  const form = new FormData();
+  form.append("file", new Blob([bytesFrom(PDF_B64)], { type: "application/pdf" }), "fixture.pdf");
+  form.append("pageCount", "1");
+  const res = await fetch(BASE + "/api/sources", { method: "POST", body: form });
+  const body = await res.json().catch(() => ({}));
+  return { status: res.status, body };
+}
+
+// A page upload that declares which source PDF page it was rendered
+// from, exactly as the editor does.
+async function uploadPageWithSource(sourceId, sourcePage) {
+  const form = new FormData();
+  form.append("file", new Blob([bytesFrom(PNG_B64)], { type: "image/png" }), "page.png");
+  form.append("width", "1");
+  form.append("height", "1");
+  if (sourceId) { form.append("sourceId", sourceId); form.append("sourcePage", String(sourcePage)); }
+  const res = await fetch(BASE + "/api/pages", { method: "POST", body: form });
+  const body = await res.json();
+  if (!res.ok) throw new Error(`page upload failed: ${res.status}`);
   return body.id;
 }
 
@@ -795,6 +829,78 @@ async function main() {
   await test("duplicate 404s an unknown envelope", async () => {
     const r = await api("/api/envelopes/does-not-exist/duplicate", { method: "POST", json: {} });
     assertEq(r.status, 404, "status");
+  });
+
+  /* ---------- original-PDF preservation ---------- */
+
+  group("source preservation");
+
+  await test("stores an uploaded PDF as a source", async () => {
+    const { status, body } = await uploadSource();
+    assertEq(status, 200, "status");
+    assert(body.id, "should return a source id");
+    assertEq(body.pageCount, 1, "page count echoed back");
+    assert(body.bytes > 100, "should report the stored size");
+  });
+
+  await test("refuses a non-PDF source", async () => {
+    const form = new FormData();
+    form.append("file", new Blob([bytesFrom(PNG_B64)], { type: "image/png" }), "not-a-pdf.png");
+    const res = await fetch(BASE + "/api/sources", { method: "POST", body: form });
+    assertEq(res.status, 400, "an image is not a source document");
+  });
+
+  await test("refuses a file that only claims to be a PDF", async () => {
+    const form = new FormData();
+    form.append("file", new Blob([bytesFrom(PNG_B64)], { type: "application/pdf" }), "liar.pdf");
+    const res = await fetch(BASE + "/api/sources", { method: "POST", body: form });
+    assertEq(res.status, 400, "the magic bytes are checked, not the declared type");
+  });
+
+  await test("a page rendered from a PDF carries its source into the envelope", async () => {
+    const src = await uploadSource();
+    const pageId = await uploadPageWithSource(src.body.id, 1);
+    const payload = envelopePayload({ pageIds: [pageId], signerCount: 1 });
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 200, "status");
+    const p = r.json.envelope.pages[0];
+    assertEq(p.sourceId, src.body.id, "source id resolved onto the page");
+    assertEq(p.sourcePage, 1, "source page number");
+  });
+
+  await test("a plain image page has no source", async () => {
+    const pageId = await uploadPage();
+    const r = await api("/api/envelopes", { method: "POST", json: envelopePayload({ pageIds: [pageId], signerCount: 1 }) });
+    assertEq(r.status, 200, "status");
+    assertEq(r.json.envelope.pages[0].sourceId, undefined, "no source should be attached");
+  });
+
+  await test("a client cannot claim a source it did not upload", async () => {
+    // Someone else's source, and a page that has nothing to do with it.
+    const src = await uploadSource();
+    const pageId = await uploadPage();
+    const payload = envelopePayload({ pageIds: [pageId], signerCount: 1 });
+    payload.pages = [{ id: pageId, src: `/api/pages/${pageId}`, w: 1, h: 1, sourceId: src.body.id, sourcePage: 1 }];
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 200, "the envelope is still created");
+    assertEq(r.json.envelope.pages[0].sourceId, undefined,
+      "the server must ignore a source the page file was not uploaded with");
+  });
+
+  await test("rejects an envelope referencing an unknown page", async () => {
+    const payload = envelopePayload({ pageIds: ["not-a-real-page-id"], signerCount: 1 });
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 400, "unknown page ids must be refused at creation");
+  });
+
+  await test("a duplicated envelope keeps the source link", async () => {
+    const src = await uploadSource();
+    const pageId = await uploadPageWithSource(src.body.id, 1);
+    const created = await api("/api/envelopes", { method: "POST", json: envelopePayload({ pageIds: [pageId], signerCount: 1 }) });
+    assertEq(created.status, 200, "create status");
+    const dup = await api(`/api/envelopes/${created.json.envelope.id}/duplicate`, { method: "POST", json: {} });
+    assertEq(dup.status, 200, "duplicate status");
+    assertEq(dup.json.envelope.pages[0].sourceId, src.body.id, "the copy builds from the same original");
   });
 
   /* ---------- report ---------- */

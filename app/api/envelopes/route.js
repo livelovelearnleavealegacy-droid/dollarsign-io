@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { createEnvelope } from "@/lib/db";
+import { createEnvelope, getPageFile } from "@/lib/db";
 import {
   calcPrice, randTrackingId, MAX_PAGES, MAX_SIGNERS,
   FIELD_KINDS, SIGNING_MODES, DEFAULT_SIGNING_MODE,
@@ -61,6 +61,25 @@ export async function POST(req) {
     expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
   }
 
+  // Every page must be a real uploaded file, and its link to an original
+  // PDF is read from the database rather than taken from the request.
+  // A client that could name any source id could have someone else's
+  // document stamped into its own envelope.
+  const resolvedPages = [];
+  for (const p of pages) {
+    const row = getPageFile(p?.id);
+    if (!row) {
+      return NextResponse.json({ error: "one of the pages is not a known upload" }, { status: 400 });
+    }
+    resolvedPages.push({
+      id: row.id,
+      src: `/api/pages/${row.id}`,
+      w: p.w ?? row.width ?? null,
+      h: p.h ?? row.height ?? null,
+      ...(row.source_id ? { sourceId: row.source_id, sourcePage: row.source_page || 1 } : {}),
+    });
+  }
+
   const id = randomUUID();
   const trackingId = randTrackingId();
 
@@ -72,7 +91,7 @@ export async function POST(req) {
   // Status starts as pending_payment: no emails go out and nothing is
   // considered "sent" until the Stripe webhook confirms a real charge.
   const envelope = createEnvelope({
-    id, trackingId, senderName, senderEmail, pages, signers, fields, price, status: "pending_payment",
+    id, trackingId, senderName, senderEmail, pages: resolvedPages, signers, fields, price, status: "pending_payment",
     signingMode: mode,
     expiresAt,
     documentName: typeof documentName === "string" ? documentName.trim().slice(0, MAX_NAME_LENGTH) || null : null,
