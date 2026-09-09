@@ -2,29 +2,52 @@ import { NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 
-// READ ONLY. What is actually on the volume, and how much room is left.
+// READ ONLY. What is actually on the persistent volume, and how much
+// room is left.
 //
-// This exists because of a specific failure: the orphaned-file report
-// accounted for 146 MB of a 991 MB volume and looked healthy, while
-// 843 MB of pre-refactor rows sat inside the database file itself —
-// invisible, because nothing measured the database. A monitoring tool
-// only sees what it was built to look at, so this one measures every
-// component separately and then checks that they add up.
+// THE DESIGN RULE HERE: enumerate, never assume.
+//
+// The first version of this file measured three things by name — the
+// database, pages/, sources/ — and reported everything else as an
+// unexplained gap. It immediately hid 67 MB of cached PDFs in that gap,
+// which is the same failure as the 843 MB of dead rows that sat
+// unnoticed inside the database: a report only ever sees what it was
+// written to look for. So this version lists whatever is in the volume
+// root and measures each entry, whether or not the app knows what it
+// is. A directory added next year appears by itself.
 //
 // Gated on ADMIN_TOKEN. With the variable unset the route 404s, so an
 // unconfigured deploy exposes nothing.
 export const dynamic = "force-dynamic";
 
-function dirBytes(dir) {
+// What each top-level entry is for, so the report reads as sentences
+// rather than a list of paths. An entry missing from this map is not an
+// error — it is reported as "unrecognised", which is the signal.
+const KNOWN = {
+  "pages": "rendered page images — the record; an envelope's PDF is rebuilt from these",
+  "sources": "original uploaded PDFs, kept so output stays text-searchable",
+  "pdfs": "cache of completed documents; regenerable, self-sweeps after 30 days unused",
+  "lost+found": "filesystem's own recovery directory; not ours",
+};
+
+// Recursive size, in bytes, with a depth limit so a symlink loop or a
+// surprise deep tree can't turn a status check into a hang.
+function measure(target, depth = 0) {
   let bytes = 0, files = 0;
+  let st;
+  try { st = fs.lstatSync(target); } catch { return { bytes: 0, files: 0 }; }
+  if (st.isSymbolicLink()) return { bytes: 0, files: 0 };
+  if (st.isFile()) return { bytes: st.size, files: 1 };
+  if (!st.isDirectory() || depth > 6) return { bytes: 0, files: 0 };
+
   let entries;
-  try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
-  catch { return { bytes: 0, files: 0, missing: true }; }
-  for (const e of entries) {
-    if (!e.isFile()) continue;
-    try { bytes += fs.statSync(path.join(dir, e.name)).size; files++; } catch { /* vanished mid-scan */ }
+  try { entries = fs.readdirSync(target); } catch { return { bytes: 0, files: 0 }; }
+  for (const name of entries) {
+    const sub = measure(path.join(target, name), depth + 1);
+    bytes += sub.bytes;
+    files += sub.files;
   }
-  return { bytes, files, missing: false };
+  return { bytes, files };
 }
 
 export async function GET(req) {
@@ -37,21 +60,37 @@ export async function GET(req) {
   const root = path.dirname(dbPath);
   const mb = (b) => +(b / 1048576).toFixed(2);
 
-  // The database is three files, not one: SQLite keeps a write-ahead
-  // log and a shared-memory index beside it. A WAL that never
-  // checkpoints is its own way to fill a disk, so count them.
-  let dbBytes = 0, walBytes = 0, shmBytes = 0;
-  try { dbBytes = fs.statSync(dbPath).size; } catch { /* not created until first write */ }
-  try { walBytes = fs.statSync(`${dbPath}-wal`).size; } catch { /* no WAL */ }
-  try { shmBytes = fs.statSync(`${dbPath}-shm`).size; } catch { /* no shm */ }
+  // Everything in the volume root, measured, named, and flagged if the
+  // app has no idea what it is.
+  const entries = [];
+  let accountedBytes = 0;
+  const unrecognised = [];
+  let rootEntries = [];
+  try { rootEntries = fs.readdirSync(root).sort(); } catch { /* reported as an empty volume below */ }
 
-  const pages = dirBytes(path.join(root, "pages"));
-  const sources = dirBytes(path.join(root, "sources"));
+  for (const name of rootEntries) {
+    const { bytes, files } = measure(path.join(root, name));
+    accountedBytes += bytes;
+    const isDbFile = name === path.basename(dbPath) || name.startsWith(`${path.basename(dbPath)}-`);
+    const purpose = isDbFile ? "the SQLite database and its journal" : KNOWN[name] || null;
+    if (!purpose && bytes > 1048576) unrecognised.push({ name, mb: mb(bytes) });
+    entries.push({ name, mb: mb(bytes), files, purpose: purpose || "UNRECOGNISED — nothing in the app claims this" });
+  }
 
-  // Free space on the mount itself. Everything above is what we know
-  // about; this is the number that decides whether the next upload
-  // succeeds, which is why it is reported even when the parts look fine.
-  let volume = null;
+  // The database is three files, not one: SQLite keeps a write-ahead log
+  // and a shared-memory index beside it. A WAL that never checkpoints is
+  // its own way to fill a disk.
+  const sizeOf = (p) => { try { return fs.statSync(p).size; } catch { return 0; } };
+  const database = { fileMb: mb(sizeOf(dbPath)), walMb: mb(sizeOf(`${dbPath}-wal`)), shmMb: mb(sizeOf(`${dbPath}-shm`)) };
+
+  const byName = (n) => entries.find((e) => e.name === n) || { mb: 0, files: 0 };
+  const pageImages = { files: byName("pages").files, mb: byName("pages").mb };
+  const sourcePdfs = { files: byName("sources").files, mb: byName("sources").mb };
+  const cachedPdfs = { files: byName("pdfs").files, mb: byName("pdfs").mb };
+
+  // Free space on the mount itself. This is the number that decides
+  // whether the next upload succeeds.
+  let volume;
   try {
     const st = fs.statfsSync(root);
     const total = st.blocks * st.bsize;
@@ -64,20 +103,23 @@ export async function GET(req) {
     };
   } catch { volume = { error: "statfs unavailable on this platform" }; }
 
-  const accountedBytes = dbBytes + walBytes + shmBytes + pages.bytes + sources.bytes;
+  // Now that every entry is measured, this gap should be small — a few
+  // MB of block-allocation slack and filesystem reserve. A large gap
+  // means something is consuming the volume that cannot even be listed.
+  const unaccountedMb = volume && volume.usedMb != null ? +(volume.usedMb - mb(accountedBytes)).toFixed(2) : null;
 
   return NextResponse.json({
     note: "Read-only. Nothing is written or deleted.",
     at: new Date().toISOString(),
     volumeRoot: root,
-    database: { fileMb: mb(dbBytes), walMb: mb(walBytes), shmMb: mb(shmBytes) },
-    pageImages: { files: pages.files, mb: mb(pages.bytes), ...(pages.missing ? { missing: true } : {}) },
-    sourcePdfs: { files: sources.files, mb: mb(sources.bytes), ...(sources.missing ? { missing: true } : {}) },
+    entries,
+    unrecognised,
+    database,
+    pageImages,
+    sourcePdfs,
+    cachedPdfs,
     accountedForMb: mb(accountedBytes),
-    // If this is much larger than accountedForMb, something is using
-    // the volume that no part of this app knows about. That gap is the
-    // whole point of the endpoint.
-    unaccountedMb: volume && volume.usedMb != null ? +(volume.usedMb - mb(accountedBytes)).toFixed(2) : null,
+    unaccountedMb,
     volume,
   });
 }
