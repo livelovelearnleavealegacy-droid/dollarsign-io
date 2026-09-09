@@ -3,13 +3,17 @@ name: Tests
 # Runs the API suite in tests/run-tests.mjs against production. No
 # dependencies to install — the script uses only Node built-ins, so a
 # run takes a few seconds.
+#
+# Points at the real domain rather than the Railway subdomain, so a
+# green run also proves DNS, the redirect and the certificate are
+# working — not just the container.
 on:
   workflow_dispatch:
     inputs:
       base_url:
         description: "Site to test against"
         required: false
-        default: "https://dollarsign-io-production.up.railway.app"
+        default: "https://dollarsign.io"
       paid_envelope_id:
         description: "Optional: a paid envelope id, to also run the ESIGN, resend and void tests"
         required: false
@@ -43,7 +47,7 @@ jobs:
 
       - name: Run test suite
         env:
-          BASE_URL: ${{ github.event.inputs.base_url || 'https://dollarsign-io-production.up.railway.app' }}
+          BASE_URL: ${{ github.event.inputs.base_url || 'https://dollarsign.io' }}
           TEST_EMAIL: ${{ vars.TEST_EMAIL || 'livelovelearnleavealegacy@gmail.com' }}
           PAID_ENVELOPE_ID: ${{ github.event.inputs.paid_envelope_id }}
           # Email-sending tests are OFF unless explicitly enabled on a
