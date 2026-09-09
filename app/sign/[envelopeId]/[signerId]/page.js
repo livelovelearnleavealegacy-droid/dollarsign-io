@@ -369,7 +369,7 @@ export default function SignPage({ params }) {
         </div>
       )}
 
-      {showSignPad && <SignaturePad kind={signPadKind} onConfirm={applySignature} onCancel={() => setShowSignPad(false)} />}
+      {showSignPad && <SignaturePad kind={signPadKind} signerName={signer.name} onConfirm={applySignature} onCancel={() => setShowSignPad(false)} />}
       {showTextPad && <TextFieldPad label="title" onConfirm={applyText} onCancel={() => setShowTextPad(false)} />}
     </div>
   );

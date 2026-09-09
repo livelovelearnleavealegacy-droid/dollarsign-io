@@ -9,27 +9,50 @@ import { ov, iconBtn, tabBtn, tabBtnActive, linkBtn, inputStyle, primaryBtn } fr
    which is exactly the amount of memory a product with no accounts
    should have. Signatures and initials are stored under separate keys:
    offering someone's full signature when a page asks for initials would
-   put the wrong mark on the document. */
-const STORAGE_KEYS = { signature: "ds_saved_signature_v1", initials: "ds_saved_initials_v1" };
+   put the wrong mark on the document.
 
-function readSaved(kind) {
+   The saved mark is stored WITH THE NAME OF WHOEVER MADE IT, and is only
+   ever offered back to that same name. Without this, in-person signing
+   and saved signatures combine badly: you hand your phone to the next
+   signer, their pad opens pre-loaded with YOUR signature, and one
+   distracted tap puts your mark on their line. A device is not a person,
+   so the device's memory has to be keyed to a person.
+
+   Legacy values (a bare data URL from before this change) have no owner
+   recorded, so they are ignored rather than guessed at. */
+const STORAGE_KEYS = { signature: "ds_saved_signature_v2", initials: "ds_saved_initials_v2" };
+
+const normaliseName = (n) => String(n || "").trim().toLowerCase().replace(/\s+/g, " ");
+
+function readSaved(kind, signerName) {
   try {
-    const v = window.localStorage.getItem(STORAGE_KEYS[kind] || STORAGE_KEYS.signature);
-    return typeof v === "string" && v.startsWith("data:image/") ? v : null;
+    const raw = window.localStorage.getItem(STORAGE_KEYS[kind] || STORAGE_KEYS.signature);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed.data !== "string" || !parsed.data.startsWith("data:image/")) return null;
+    // Only hand it back to the person who made it.
+    if (normaliseName(parsed.name) !== normaliseName(signerName)) return null;
+    return parsed.data;
   } catch {
-    // Private mode, blocked site data, or a browser that throws on
-    // access. A missing convenience must never block signing.
+    // Private mode, blocked site data, a browser that throws on access,
+    // or a legacy/corrupt value. A missing convenience must never block
+    // signing.
     return null;
   }
 }
-function writeSaved(kind, dataUrl) {
-  try { window.localStorage.setItem(STORAGE_KEYS[kind] || STORAGE_KEYS.signature, dataUrl); } catch { /* non-fatal */ }
+function writeSaved(kind, signerName, dataUrl) {
+  try {
+    window.localStorage.setItem(
+      STORAGE_KEYS[kind] || STORAGE_KEYS.signature,
+      JSON.stringify({ name: String(signerName || ""), data: dataUrl })
+    );
+  } catch { /* non-fatal */ }
 }
 function clearSaved(kind) {
   try { window.localStorage.removeItem(STORAGE_KEYS[kind] || STORAGE_KEYS.signature); } catch { /* non-fatal */ }
 }
 
-export default function SignaturePad({ onConfirm, onCancel, kind = "signature" }) {
+export default function SignaturePad({ onConfirm, onCancel, kind = "signature", signerName = "" }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
   const [mode, setMode] = useState("draw");
@@ -44,10 +67,10 @@ export default function SignaturePad({ onConfirm, onCancel, kind = "signature" }
   // localStorage is only available in the browser, so this has to wait
   // for mount rather than run during render.
   useEffect(() => {
-    const v = readSaved(kind);
+    const v = readSaved(kind, signerName);
     setSaved(v);
     if (v) setMode("saved");
-  }, [kind]);
+  }, [kind, signerName]);
 
   const pos = (e) => {
     const r = canvasRef.current.getBoundingClientRect();
@@ -99,7 +122,7 @@ export default function SignaturePad({ onConfirm, onCancel, kind = "signature" }
   };
 
   const apply = (dataUrl) => {
-    writeSaved(kind, dataUrl);
+    writeSaved(kind, signerName, dataUrl);
     onConfirm({ type: "image", data: dataUrl });
   };
 
@@ -154,7 +177,7 @@ export default function SignaturePad({ onConfirm, onCancel, kind = "signature" }
             </div>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
               <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#8A8F98" }}>
-                saved on this device only
+                saved on this device for {signerName || "you"}
               </span>
               <button onClick={forget} style={linkBtn}><X size={12} style={{ marginRight: 4 }} />forget</button>
             </div>
