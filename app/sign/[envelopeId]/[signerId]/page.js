@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Lock, PenTool, CalendarDays, Type, XCircle } from "lucide-react";
 import Seal from "@/components/Seal";
 import SignaturePad from "@/components/SignaturePad";
@@ -14,6 +14,11 @@ export default function SignPage({ params }) {
   const [error, setError] = useState(null);
   const [pageIdx, setPageIdx] = useState(0);
   const [visitedPages, setVisitedPages] = useState(new Set([0]));
+  // Continuous mode: every page in one scroll instead of one-at-a-time.
+  // A 100-page lease needed 100 clicks to become submittable, which is
+  // a completion-rate problem, not a nicety.
+  const [continuous, setContinuous] = useState(false);
+  const pageRefs = useRef([]);
   const [fields, setFields] = useState([]);
   const [showSignPad, setShowSignPad] = useState(false);
   const [signPadKind, setSignPadKind] = useState("signature");
@@ -40,6 +45,40 @@ export default function SignPage({ params }) {
       .then((data) => { setEnvelope(data); setFields(data.fields); })
       .catch((err) => setError(err.message));
   }, [envelopeId]);
+
+  /* In continuous mode a page counts as reviewed once it crosses the
+     middle of the viewport.
+
+     The margins matter: a full page image is usually taller than a
+     phone screen, so a threshold like 0.6 would never be reached and
+     pages would never mark as read. Shrinking the observation box to a
+     thin band across the middle of the screen makes "scrolled past" the
+     condition, which works at any page height.
+
+     This is also better evidence than clicking Next — it records that
+     the page actually passed through the signer's view. */
+  useEffect(() => {
+    if (!continuous || !envelope) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        const seen = [];
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const idx = Number(entry.target.dataset.pageIdx);
+          if (Number.isInteger(idx)) seen.push(idx);
+        }
+        if (!seen.length) return;
+        setVisitedPages((v) => {
+          const next = new Set(v);
+          for (const idx of seen) next.add(idx);
+          return next.size === v.size ? v : next;
+        });
+      },
+      { root: null, rootMargin: "-45% 0px -45% 0px", threshold: 0 }
+    );
+    for (const el of pageRefs.current) if (el) io.observe(el);
+    return () => io.disconnect();
+  }, [continuous, envelope]);
 
   const goToPage = (idx) => {
     setPageIdx(idx);
@@ -106,7 +145,6 @@ export default function SignPage({ params }) {
   }
 
   const currentPage = envelope.pages[pageIdx];
-  const pageFields = fields.filter((f) => f.pageId === currentPage.id);
   const mySignerFields = fields.filter((f) => f.signerId === signerId);
   const myFieldsDone = mySignerFields.every((f) => f.value);
   const allPagesReviewed = visitedPages.size === envelope.pages.length;
@@ -221,6 +259,81 @@ export default function SignPage({ params }) {
     );
   }
 
+  /* One page, drawn the same way in both modes.
+
+     The image sits in a box with the page's own aspect ratio reserved
+     up front. Without it the field tags position themselves against a
+     zero-height placeholder and then jump when the image lands — the
+     "broken image flash" that made a slow connection look like a broken
+     document. */
+  const renderPage = (page, idx) => {
+    const pFields = fields.filter((f) => f.pageId === page.id);
+    return (
+          <div
+            style={{
+              position: "relative", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden",
+              // A soft fill rather than white: the box is visible while
+              // the image loads, so the page reads as "loading" instead
+              // of "blank".
+              background: "#F2F4F7",
+              // The page's own proportions, reserved before the image
+              // arrives. w/h come back with the envelope; when they are
+              // missing this falls back to the old behaviour.
+              aspectRatio: page.w && page.h ? `${page.w} / ${page.h}` : undefined,
+            }}
+          >
+            <img
+              src={page.src}
+              alt={`page ${idx + 1}`}
+              // Only the first page is worth fetching eagerly. In
+              // continuous mode this is what keeps a 100-page envelope
+              // from requesting 100 images at once.
+              loading={idx === 0 ? "eager" : "lazy"}
+              style={{ width: "100%", display: "block" }}
+            />
+            {pFields.map((f) => {
+              const mine = f.signerId === signerId;
+              const owner = envelope.signers.find((s) => s.id === f.signerId);
+              return (
+                <div key={f.id}
+                  onClick={() => {
+                    if (!mine) return;
+                    if (f.kind === "signature" || f.kind === "initials") openSignPad(f.id, f.kind);
+                    else if (f.kind === "date") applyDate(f.id);
+                    else if (f.kind === "checkbox") toggleCheck(f.id);
+                    else openTextPad(f.id);
+                  }}
+                  style={{
+                    position: "absolute", left: `${f.x}%`, top: `${f.y}%`, transform: "translate(0,-50%)",
+                    cursor: mine ? "pointer" : "default", background: "rgba(255,255,255,0.95)",
+                    border: `1.5px solid ${f.value ? "#4E8B5A" : mine ? owner.color : "#C7CAD1"}`, borderRadius: 5,
+                    padding: f.kind === "signature" ? "5px 12px" : "4px 9px", opacity: mine || f.value ? 1 : 0.55,
+                  }}>
+                  {f.value ? (
+                    f.kind === "signature" || f.kind === "initials" ? (
+                      f.value.type === "image"
+                        ? <img src={f.value.data} alt={f.kind} style={{ height: f.kind === "initials" ? 18 : 26 }} />
+                        : <span style={{ fontFamily: "'Caveat', cursive", fontSize: 22 }}>{f.value.data}</span>
+                    ) : f.kind === "checkbox" ? (
+                      <CheckBox checked={f.value === CHECKED} />
+                    ) : <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16 }}>{f.value}</span>
+                  ) : mine ? (
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: owner.color, display: "flex", alignItems: "center", gap: 5 }}>
+                      {f.kind === "signature" || f.kind === "initials" ? <PenTool size={12} /> : f.kind === "date" ? <CalendarDays size={12} /> : f.kind === "checkbox" ? <Check size={12} /> : <Type size={12} />}
+                      tap to {f.kind === "signature" ? "sign" : f.kind === "initials" ? "initial" : f.kind === "date" ? "date" : f.kind === "checkbox" ? "check" : "fill in"}
+                    </span>
+                  ) : (
+                    <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#9AA0AA", display: "flex", alignItems: "center", gap: 5 }}>
+                      <Lock size={11} /> {owner.name}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+    );
+  };
+
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 190px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 6 }}>
@@ -234,60 +347,58 @@ export default function SignPage({ params }) {
         {envelope.senderName || "Someone"} sent you this document. Review every page, fill in your fields, then submit.
       </p>
 
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-        <button disabled={pageIdx === 0} onClick={() => goToPage(pageIdx - 1)} style={{ ...iconBtn, opacity: pageIdx === 0 ? 0.3 : 1 }}><ChevronLeft size={18} /></button>
-        <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#5B5F6B" }}>
-          page {pageIdx + 1} of {envelope.pages.length} {visitedPages.has(pageIdx) ? "" : "· not yet reviewed"}
-        </span>
-        <button disabled={pageIdx === envelope.pages.length - 1} onClick={() => goToPage(pageIdx + 1)} style={{ ...iconBtn, opacity: pageIdx === envelope.pages.length - 1 ? 0.3 : 1 }}><ChevronRight size={18} /></button>
+      {/* Page navigation. Continuous mode exists because a long document
+          in one-page-at-a-time mode needs one click per page before it
+          can be submitted — 100 pages, 100 clicks, and most people quit
+          instead. */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12, flexWrap: "wrap" }}>
+        {!continuous && (
+          <>
+            <button disabled={pageIdx === 0} onClick={() => goToPage(pageIdx - 1)} style={{ ...iconBtn, opacity: pageIdx === 0 ? 0.3 : 1 }}><ChevronLeft size={18} /></button>
+            <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#5B5F6B" }}>
+              page {pageIdx + 1} of {envelope.pages.length} {visitedPages.has(pageIdx) ? "" : "\u00b7 not yet reviewed"}
+            </span>
+            <button disabled={pageIdx === envelope.pages.length - 1} onClick={() => goToPage(pageIdx + 1)} style={{ ...iconBtn, opacity: pageIdx === envelope.pages.length - 1 ? 0.3 : 1 }}><ChevronRight size={18} /></button>
+          </>
+        )}
+        {continuous && (
+          <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#5B5F6B" }}>
+            all {envelope.pages.length} pages {"\u00b7"} {visitedPages.size} reviewed
+          </span>
+        )}
+        {envelope.pages.length > 1 && (
+          <button
+            type="button"
+            onClick={() => setContinuous((c) => !c)}
+            style={{
+              marginLeft: "auto", background: "none", border: "none", padding: 0,
+              fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 15, color: "var(--ink)",
+              textDecoration: "underline", cursor: "pointer",
+            }}
+          >
+            {continuous ? "One page at a time" : "Scroll through all pages"}
+          </button>
+        )}
       </div>
 
-      <div style={{ position: "relative", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-        <img src={currentPage.src} alt={`page ${pageIdx + 1}`} style={{ width: "100%", display: "block" }} />
-        {pageFields.map((f) => {
-          const mine = f.signerId === signerId;
-          const owner = envelope.signers.find((s) => s.id === f.signerId);
-          return (
-            <div key={f.id}
-              onClick={() => {
-                if (!mine) return;
-                if (f.kind === "signature" || f.kind === "initials") openSignPad(f.id, f.kind);
-                else if (f.kind === "date") applyDate(f.id);
-                else if (f.kind === "checkbox") toggleCheck(f.id);
-                else openTextPad(f.id);
-              }}
-              style={{
-                position: "absolute", left: `${f.x}%`, top: `${f.y}%`, transform: "translate(0,-50%)",
-                cursor: mine ? "pointer" : "default", background: "rgba(255,255,255,0.95)",
-                border: `1.5px solid ${f.value ? "#4E8B5A" : mine ? owner.color : "#C7CAD1"}`, borderRadius: 5,
-                padding: f.kind === "signature" ? "5px 12px" : "4px 9px", opacity: mine || f.value ? 1 : 0.55,
-              }}>
-              {f.value ? (
-                f.kind === "signature" || f.kind === "initials" ? (
-                  f.value.type === "image"
-                    ? <img src={f.value.data} alt={f.kind} style={{ height: f.kind === "initials" ? 18 : 26 }} />
-                    : <span style={{ fontFamily: "'Caveat', cursive", fontSize: 22 }}>{f.value.data}</span>
-                ) : f.kind === "checkbox" ? (
-                  <CheckBox checked={f.value === CHECKED} />
-                ) : <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16 }}>{f.value}</span>
-              ) : mine ? (
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: owner.color, display: "flex", alignItems: "center", gap: 5 }}>
-                  {f.kind === "signature" || f.kind === "initials" ? <PenTool size={12} /> : f.kind === "date" ? <CalendarDays size={12} /> : f.kind === "checkbox" ? <Check size={12} /> : <Type size={12} />}
-                  tap to {f.kind === "signature" ? "sign" : f.kind === "initials" ? "initial" : f.kind === "date" ? "date" : f.kind === "checkbox" ? "check" : "fill in"}
-                </span>
-              ) : (
-                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "#9AA0AA", display: "flex", alignItems: "center", gap: 5 }}>
-                  <Lock size={11} /> {owner.name}
-                </span>
-              )}
+      {continuous ? (
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {envelope.pages.map((page, idx) => (
+            <div key={page.id} ref={(el) => { pageRefs.current[idx] = el; }} data-page-idx={idx}>
+              <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, color: "#9AA0AA", marginBottom: 4 }}>
+                page {idx + 1} of {envelope.pages.length} {visitedPages.has(idx) ? "\u00b7 reviewed" : ""}
+              </div>
+              {renderPage(page, idx)}
             </div>
-          );
-        })}
-      </div>
+          ))}
+        </div>
+      ) : (
+        renderPage(currentPage, pageIdx)
+      )}
 
       {!allPagesReviewed && (
         <p style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: "#C1440E", marginTop: 10 }}>
-          visit every page before you can submit ({visitedPages.size} of {envelope.pages.length} reviewed)
+          visit every page before you can submit ({visitedPages.size} of {envelope.pages.length} reviewed){envelope.pages.length > 3 && !continuous ? " \u2014 or use \u201cScroll through all pages\u201d above" : ""}
         </p>
       )}
 

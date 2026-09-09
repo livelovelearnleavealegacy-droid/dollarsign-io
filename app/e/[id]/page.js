@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail, Ban, PenTool, Copy, ArrowRight } from "lucide-react";
+import { Download, Check, Clock, ShieldCheck, Loader2, Send, Mail, Ban, PenTool, Copy, ArrowRight, AlertTriangle } from "lucide-react";
 import Seal from "@/components/Seal";
 import { todayStr, inputStyle, primaryBtn } from "@/lib/shared";
 import { isTerminal as statusIsTerminal } from "@/lib/guards";
@@ -117,6 +117,18 @@ export default function EnvelopeStatusPage({ params }) {
   };
 
   const isTerminal = statusIsTerminal(envelope.status);
+
+  /* Addresses the mail provider told us it could not deliver to.
+
+     Recorded on the audit log by the Resend webhook rather than in a
+     column, so it survives redeploys, appears on the certificate, and
+     needed no schema change. Before this existed, a bounced invitation
+     showed here as "pending" forever and the sender had no way to tell
+     a slow signer from an address that never received anything. */
+  const bounced = new Map();
+  for (const e of envelope.auditLog || []) {
+    if (e.type === "email_bounced" && e.email) bounced.set(String(e.email).toLowerCase(), e);
+  }
   const anyPending = !isTerminal && envelope.signers.some(
     (s) => !signerStatus(s) && s.email && !s.isSelf
   );
@@ -195,6 +207,7 @@ export default function EnvelopeStatusPage({ params }) {
       <div style={{ background: "#fff", boxShadow: "var(--shadow)", borderRadius: 10, padding: 16, textAlign: "left", marginBottom: anyPending ? 12 : 24 }}>
         {envelope.signers.map((s) => {
           const complete = signerStatus(s);
+          const bounceFor = (x) => (x.email ? bounced.get(String(x.email).toLowerCase()) : null);
           const canResend = !complete && !!s.email && !s.isSelf && !isTerminal;
           const msg = resendMsg[s.id];
           return (
@@ -202,8 +215,22 @@ export default function EnvelopeStatusPage({ params }) {
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 {complete ? <Check size={16} color="#4E8B5A" /> : <Clock size={16} color="#9AA0AA" />}
                 <div style={{ flex: 1, fontSize: 16, color: "var(--ink)" }}>{s.name}</div>
-                <span style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: complete ? "#4E8B5A" : "#9AA0AA" }}>{complete ? "signed" : "pending"}</span>
+                <span style={{ fontSize: 16, fontFamily: "'Plus Jakarta Sans', sans-serif", color: complete ? "#4E8B5A" : bounceFor(s) ? "#C1440E" : "#9AA0AA" }}>
+                  {complete ? "signed" : bounceFor(s) ? "undeliverable" : "pending"}
+                </span>
               </div>
+
+              {!complete && bounceFor(s) && (
+                <div style={{ display: "flex", gap: 7, alignItems: "flex-start", paddingLeft: 24, marginTop: 6, fontSize: 13, lineHeight: 1.5, color: "#C1440E" }}>
+                  <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <span>
+                    {bounceFor(s).complaint
+                      ? <>This signer marked the invitation as spam, so further email to <strong>{s.email}</strong> may not reach them.</>
+                      : <>We couldn&apos;t deliver the invitation to <strong>{s.email}</strong> — their mail server rejected it, so they never received the link.</>}
+                    {" "}Resending won&apos;t help if the address itself is wrong. Check it, then use <strong>Send another like this</strong> below to send a corrected copy.
+                  </span>
+                </div>
+              )}
 
               {canSignInPerson(s) && (
                 <div style={{ paddingLeft: 24, marginTop: 6 }}>
