@@ -14,6 +14,11 @@ export default function EnvelopeStatusPage({ params }) {
   //   resending[signerId] = true while the request is in flight
   //   resendMsg[signerId] = { ok: boolean, text: string } after it lands
   const [resending, setResending] = useState({});
+  // Per-signer address correction, keyed by signer id.
+  const [fixing, setFixing] = useState(null);
+  const [fixEmail, setFixEmail] = useState("");
+  const [fixBusy, setFixBusy] = useState(false);
+  const [fixMsg, setFixMsg] = useState(null);
   const [resendMsg, setResendMsg] = useState({});
 
   // Void is a two-step flow: this only asks for the confirmation email.
@@ -35,6 +40,36 @@ export default function EnvelopeStatusPage({ params }) {
       .catch((err) => setError(err.message));
   }, [id]);
 
+
+  /* Correcting a mistyped address, rather than making the sender buy a
+     second envelope. Only offered on a signer whose delivery actually
+     failed — the endpoint enforces that too, so a stale page can't be
+     used to redirect an envelope. */
+  const correctAddress = async (signer) => {
+    setFixBusy(true);
+    setFixMsg(null);
+    try {
+      const res = await fetch(`/api/envelopes/${id}/correct-address`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ signerId: signer.id, email: fixEmail.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Couldn't update that address.");
+      setEnvelope(data.envelope);
+      setFixing(null);
+      setFixEmail("");
+      setFixMsg({
+        signerId: signer.id,
+        ok: !!data.sent,
+        text: data.sent ? `Invitation sent to ${data.email}.` : data.error || "Address updated.",
+      });
+    } catch (err) {
+      setFixMsg({ signerId: signer.id, ok: false, text: err.message });
+    } finally {
+      setFixBusy(false);
+    }
+  };
 
   const resendInvite = async (signer) => {
     setResending((r) => ({ ...r, [signer.id]: true }));
@@ -227,8 +262,61 @@ export default function EnvelopeStatusPage({ params }) {
                     {bounceFor(s).complaint
                       ? <>This signer marked the invitation as spam, so further email to <strong>{s.email}</strong> may not reach them.</>
                       : <>We couldn&apos;t deliver the invitation to <strong>{s.email}</strong> — their mail server rejected it, so they never received the link.</>}
-                    {" "}Resending won&apos;t help if the address itself is wrong. Check it, then use <strong>Send another like this</strong> below to send a corrected copy.
+                    {" "}Resending won&apos;t help if the address itself is wrong — correct it here instead.
                   </span>
+                </div>
+              )}
+
+              {!complete && bounceFor(s) && !isTerminal && (
+                <div style={{ paddingLeft: 24, marginTop: 8 }}>
+                  {fixing === s.id ? (
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <input
+                        type="email"
+                        autoFocus
+                        value={fixEmail}
+                        onChange={(e) => setFixEmail(e.target.value)}
+                        placeholder="correct@address.com"
+                        style={{ ...inputStyle, fontFamily: "'Plus Jakarta Sans', sans-serif", width: 250, padding: "8px 12px", fontSize: 15 }}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => correctAddress(s)}
+                        disabled={fixBusy || !fixEmail.trim()}
+                        style={{ ...resendBtn, opacity: fixBusy || !fixEmail.trim() ? 0.55 : 1, cursor: fixBusy ? "default" : "pointer" }}
+                      >
+                        {fixBusy
+                          ? <Loader2 size={13} className="spin" style={{ marginRight: 5 }} />
+                          : <Send size={13} style={{ marginRight: 5 }} />}
+                        {fixBusy ? "Sending…" : "Save & send"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setFixing(null); setFixEmail(""); }}
+                        style={{ background: "none", border: "none", fontSize: 14, color: "#8A8F98", cursor: "pointer", textDecoration: "underline" }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => { setFixing(s.id); setFixEmail(""); setFixMsg(null); }}
+                      style={{ ...resendBtn, cursor: "pointer" }}
+                    >
+                      <PenTool size={13} style={{ marginRight: 5 }} />
+                      Correct this address
+                    </button>
+                  )}
+                  {fixMsg && fixMsg.signerId === s.id && fixing !== s.id && (
+                    <p style={{ fontSize: 13, lineHeight: 1.45, margin: "6px 0 2px", color: fixMsg.ok ? "#4E8B5A" : "#C1440E" }}>
+                      {fixMsg.text}
+                    </p>
+                  )}
+                  <p style={{ fontSize: 13, color: "#9AA0AA", lineHeight: 1.45, margin: "6px 0 0" }}>
+                    Their signing link stays the same — only where it&apos;s sent changes. The original address and this
+                    correction both stay on the certificate.
+                  </p>
                 </div>
               )}
 
@@ -283,8 +371,11 @@ export default function EnvelopeStatusPage({ params }) {
         <p style={{ display: "flex", alignItems: "flex-start", gap: 7, textAlign: "left", fontSize: 13, lineHeight: 1.5, color: "#8A8F98", marginBottom: 24 }}>
           <Mail size={14} style={{ flexShrink: 0, marginTop: 2 }} />
           <span>
-            Signer says they never got the email? Have them check their spam or junk folder first — that's where it usually is.
-            If it isn't there, resend the invite above. Still stuck? <a href="/faq" style={{ color: "#8A8F98" }}>See the FAQ</a>.
+            {bounced.size > 0
+              ? <>An address above is marked undeliverable — that one isn&apos;t in a spam folder, it was rejected outright. Correct it above.{" "}</>
+              : <>Signer says they never got the email? Have them check their spam or junk folder first — that&apos;s where it usually is.
+                 If it isn&apos;t there, resend the invite above.{" "}</>}
+            Still stuck? <a href="/faq" style={{ color: "#8A8F98" }}>See the FAQ</a>.
           </span>
         </p>
       )}

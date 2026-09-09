@@ -44,6 +44,8 @@ export default function RootLayout({ children }) {
             <a href="/find-my-document" style={footerLink}>Lost your document link?</a>
           </div>
           <div>
+            <a href="/check" style={footerLink}>Something go wrong?</a>
+            <span style={dot}>·</span>
             <a href="/faq" style={footerLink}>FAQ &amp; support</a>
             <span style={dot}>·</span>
             <a href="/terms" style={footerLink}>Terms</a>

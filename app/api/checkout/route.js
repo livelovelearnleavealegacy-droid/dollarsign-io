@@ -36,6 +36,14 @@ export async function POST(req) {
         quantity: 1,
       }],
       metadata: { envelopeId: envelope.id },
+      // Lets a customer enter a promotion code at checkout. Used for
+      // make-good credits issued by /check when something demonstrably
+      // failed, and for comped envelopes. A 100%-off code takes the
+      // total to zero, at which point Stripe collects no payment method
+      // at all but still fires checkout.session.completed — which is
+      // what the webhook keys on, so a free envelope needs no special
+      // handling anywhere else.
+      allow_promotion_codes: true,
       success_url: `${appUrl}/checkout/success?envelope=${envelope.id}`,
       cancel_url: `${appUrl}/checkout/cancel?envelope=${envelope.id}`,
     });
