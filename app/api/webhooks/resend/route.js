@@ -55,11 +55,40 @@ function verify(secret, req, rawBody) {
 
 const TRACKING = /ENV-[A-Z0-9]{4,12}/;
 
-function recipients(data) {
+const EMAIL_IN_TEXT = /[\w.+-]+@[\w-]+\.[\w.-]+/g;
+
+/* Every address this bounce could plausibly be about.
+
+   `data.to` is the obvious one, and for an ordinary typo'd address it
+   is the right one. But it cannot be trusted alone: a live test on
+   Sept 9 sent an invitation to bounce@simulator.amazonses.com and the
+   webhook came back with `to: ["bounced@resend.dev"]` — the provider
+   substituted its own address, so nothing matched the signer and the
+   bounce was recorded against nobody.
+
+   The real recipient was still in the SMTP diagnostic
+   ("550 5.1.1 As requested: user unknown <bounce@simulator.amazonses.com>"),
+   so that gets scanned too. Order matters: `to` first, diagnostics
+   after, so the ordinary case is unchanged and this is purely a
+   fallback. */
+function candidateAddresses(data) {
+  const out = [];
+  const push = (v) => {
+    const s = String(v || "").trim().toLowerCase();
+    if (s && !out.includes(s)) out.push(s);
+  };
+
   const to = data?.to;
-  if (Array.isArray(to)) return to.filter(Boolean).map(String);
-  if (typeof to === "string" && to) return [to];
-  return [];
+  if (Array.isArray(to)) to.forEach(push);
+  else if (typeof to === "string") push(to);
+
+  const diag = data?.bounce?.diagnosticCode;
+  const blobs = Array.isArray(diag) ? diag : diag ? [diag] : [];
+  for (const blob of blobs) {
+    for (const found of String(blob).match(EMAIL_IN_TEXT) || []) push(found);
+  }
+
+  return out;
 }
 
 // Resend has moved this field around between payload versions, so read
@@ -112,50 +141,64 @@ export async function POST(req) {
   if (already) return NextResponse.json({ received: true, ignored: "already recorded" });
 
   const senderEmail = String(envelope.senderEmail || "").toLowerCase();
+  const candidates = candidateAddresses(data);
+
+  // Whichever candidate address actually belongs to a signer on this
+  // envelope is the one worth recording — that is the address the
+  // status page and the certificate have to name for the bounce to mean
+  // anything to the sender.
+  const signer = (envelope.signers || []).find((s) => {
+    const e = String(s.email || "").toLowerCase();
+    return e && candidates.includes(e);
+  });
+
+  // Fall back to what the provider reported, so an unattributable
+  // bounce is still recorded rather than silently dropped.
+  const address = signer ? String(signer.email) : candidates[0] || "unknown recipient";
+  const lower = address.toLowerCase();
   const results = [];
 
-  for (const address of recipients(data)) {
-    const lower = address.toLowerCase();
-    const signer = (envelope.signers || []).find((s) => String(s.email || "").toLowerCase() === lower);
+  appendAuditEvent(envelope.id, {
+    type: "email_bounced",
+    at: new Date().toISOString(),
+    email: address,
+    signerId: signer?.id || null,
+    signerName: signer?.name || null,
+    // What the provider called it, when that differs from the address
+    // actually on the envelope. Keeps the record honest without showing
+    // the sender an address they never typed.
+    reportedTo: candidates[0] && candidates[0] !== lower ? candidates[0] : undefined,
+    complaint: type === "email.complained",
+    reason: reasonOf(data),
+    emailId,
+    subject: subject.slice(0, 160),
+  });
 
-    appendAuditEvent(envelope.id, {
-      type: "email_bounced",
-      at: new Date().toISOString(),
-      email: address,
-      signerId: signer?.id || null,
-      signerName: signer?.name || null,
-      complaint: type === "email.complained",
-      reason: reasonOf(data),
-      emailId,
-      subject: subject.slice(0, 160),
-    });
-
-    // Tell the sender — but never the address that just failed, and
-    // never when the sender IS that address, which would try to deliver
-    // a bounce notice to a mailbox we just learned is unreachable.
-    if (envelope.senderEmail && lower !== senderEmail) {
-      try {
-        await sendBounceNotice({
-          to: envelope.senderEmail,
-          senderName: envelope.senderName,
-          signerName: signer?.name || null,
-          signerEmail: address,
-          envelopeId: envelope.id,
-          trackingId: envelope.trackingId,
-          documentName: envelope.documentName,
-          reason: reasonOf(data),
-        });
-        results.push({ address, recorded: true, senderNotified: true });
-      } catch (err) {
-        // The bounce is already on the audit trail and visible on the
-        // status page. A failed notification must not make Resend retry
-        // and duplicate the record.
-        console.error("bounce notice failed:", err?.message || err);
-        results.push({ address, recorded: true, senderNotified: false });
-      }
-    } else {
-      results.push({ address, recorded: true, senderNotified: false });
+  // Tell the sender — but never the address that just failed, and never
+  // when the sender IS that address, which would try to deliver a bounce
+  // notice to a mailbox we just learned is unreachable.
+  if (envelope.senderEmail && lower !== senderEmail) {
+    try {
+      await sendBounceNotice({
+        to: envelope.senderEmail,
+        senderName: envelope.senderName,
+        signerName: signer?.name || null,
+        signerEmail: address,
+        envelopeId: envelope.id,
+        trackingId: envelope.trackingId,
+        documentName: envelope.documentName,
+        reason: reasonOf(data),
+      });
+      results.push({ address, attributed: !!signer, senderNotified: true });
+    } catch (err) {
+      // The bounce is already on the audit trail and visible on the
+      // status page. A failed notification must not make Resend retry
+      // and duplicate the record.
+      console.error("bounce notice failed:", err?.message || err);
+      results.push({ address, attributed: !!signer, senderNotified: false });
     }
+  } else {
+    results.push({ address, attributed: !!signer, senderNotified: false });
   }
 
   return NextResponse.json({ received: true, trackingId: envelope.trackingId, results });
