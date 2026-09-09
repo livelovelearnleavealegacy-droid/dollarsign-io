@@ -644,112 +644,114 @@ async function main() {
   group("field kinds");
 
   await test("accepts initials and checkbox fields", async () => {
-    const pageId = await uploadPage();
-    const base = envelopePayload({ pageIds: [pageId], signerCount: 1 });
-    base.fields = ["signature", "initials", "date", "text", "checkbox"].map((kind, i) => ({
-      id: `f${i}`, pageId, signerId: "s0", kind, x: 10 + i * 10, y: 40, value: null,
+    const pageId2 = await uploadPage();
+    const payload = envelopePayload({ pageIds: [pageId2], signerCount: 1 });
+    payload.fields = ["signature", "initials", "date", "text", "checkbox"].map((kind, i) => ({
+      id: `f${i}`, pageId: pageId2, signerId: "s0", kind, x: 10 + i * 10, y: 40, value: null,
     }));
-    const { res, body } = await api("/api/envelopes", { method: "POST", body: JSON.stringify(base) });
-    assertEq(res.status, 200, "status");
-    assertEq(body.envelope.fields.length, 5, "field count");
-    const kinds = body.envelope.fields.map((f) => f.kind).sort().join(",");
-    assertEq(kinds, "checkbox,date,initials,signature,text", "stored kinds");
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 200, "status");
+    assertEq(r.json.envelope.fields.length, 5, "field count");
+    assertEq(
+      r.json.envelope.fields.map((f) => f.kind).sort().join(","),
+      "checkbox,date,initials,signature,text",
+      "stored kinds"
+    );
   });
 
   await test("rejects an unknown field kind (400)", async () => {
-    const pageId = await uploadPage();
-    const base = envelopePayload({ pageIds: [pageId], signerCount: 1 });
-    base.fields = [{ id: "f0", pageId, signerId: "s0", kind: "notarystamp", x: 50, y: 50, value: null }];
-    const { res, body } = await api("/api/envelopes", { method: "POST", body: JSON.stringify(base) });
-    assertEq(res.status, 400, "status");
-    assert(/unsupported field type/i.test(body.error || ""), `expected an unsupported-kind error, got ${body.error}`);
+    const pageId2 = await uploadPage();
+    const payload = envelopePayload({ pageIds: [pageId2], signerCount: 1 });
+    payload.fields = [{ id: "f0", pageId: pageId2, signerId: "s0", kind: "notarystamp", x: 50, y: 50, value: null }];
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 400, "status");
+    assert(/unsupported field type/i.test(r.json?.error || ""), `expected an unsupported-kind error, got ${r.json?.error}`);
   });
 
   group("signing order");
 
   await test("defaults to parallel signing", async () => {
-    const pageId = await uploadPage();
-    const { res, body } = await api("/api/envelopes", {
-      method: "POST", body: JSON.stringify(envelopePayload({ pageIds: [pageId], signerCount: 2 })),
-    });
-    assertEq(res.status, 200, "status");
-    assertEq(body.envelope.signingMode, "parallel", "default signing mode");
+    const pageId2 = await uploadPage();
+    const r = await api("/api/envelopes", { method: "POST", json: envelopePayload({ pageIds: [pageId2], signerCount: 2 }) });
+    assertEq(r.status, 200, "status");
+    assertEq(r.json.envelope.signingMode, "parallel", "default signing mode");
   });
 
   await test("stores sequential signing when asked", async () => {
-    const pageId = await uploadPage();
-    const payload = { ...envelopePayload({ pageIds: [pageId], signerCount: 2 }), signingMode: "sequential" };
-    const { res, body } = await api("/api/envelopes", { method: "POST", body: JSON.stringify(payload) });
-    assertEq(res.status, 200, "status");
-    assertEq(body.envelope.signingMode, "sequential", "signing mode");
+    const pageId2 = await uploadPage();
+    const payload = { ...envelopePayload({ pageIds: [pageId2], signerCount: 2 }), signingMode: "sequential" };
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 200, "status");
+    assertEq(r.json.envelope.signingMode, "sequential", "signing mode");
   });
 
   await test("falls back to parallel on a bogus signing mode", async () => {
-    const pageId = await uploadPage();
-    const payload = { ...envelopePayload({ pageIds: [pageId], signerCount: 1 }), signingMode: "whenever" };
-    const { res, body } = await api("/api/envelopes", { method: "POST", body: JSON.stringify(payload) });
-    assertEq(res.status, 200, "status");
-    assertEq(body.envelope.signingMode, "parallel", "signing mode");
+    const pageId2 = await uploadPage();
+    const payload = { ...envelopePayload({ pageIds: [pageId2], signerCount: 1 }), signingMode: "whenever" };
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 200, "status");
+    assertEq(r.json.envelope.signingMode, "parallel", "signing mode");
   });
 
   group("expiry");
 
   await test("sets a default expiry about 30 days out", async () => {
-    const pageId = await uploadPage();
-    const { res, body } = await api("/api/envelopes", {
-      method: "POST", body: JSON.stringify(envelopePayload({ pageIds: [pageId], signerCount: 1 })),
-    });
-    assertEq(res.status, 200, "status");
-    assert(body.envelope.expiresAt, "expiresAt should be set by default");
-    const days = (new Date(body.envelope.expiresAt) - Date.now()) / 86400000;
+    const pageId2 = await uploadPage();
+    const r = await api("/api/envelopes", { method: "POST", json: envelopePayload({ pageIds: [pageId2], signerCount: 1 }) });
+    assertEq(r.status, 200, "status");
+    assert(r.json.envelope.expiresAt, "expiresAt should be set by default");
+    const days = (new Date(r.json.envelope.expiresAt) - Date.now()) / 86400000;
     assert(days > 29 && days < 31, `expected ~30 days, got ${days.toFixed(2)}`);
   });
 
   await test("expiresInDays 0 means never", async () => {
-    const pageId = await uploadPage();
-    const payload = { ...envelopePayload({ pageIds: [pageId], signerCount: 1 }), expiresInDays: 0 };
-    const { res, body } = await api("/api/envelopes", { method: "POST", body: JSON.stringify(payload) });
-    assertEq(res.status, 200, "status");
-    assertEq(body.envelope.expiresAt, null, "expiresAt");
+    const pageId2 = await uploadPage();
+    const payload = { ...envelopePayload({ pageIds: [pageId2], signerCount: 1 }), expiresInDays: 0 };
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 200, "status");
+    assertEq(r.json.envelope.expiresAt, null, "expiresAt");
   });
 
   await test("rejects an out-of-range expiry (400)", async () => {
-    const pageId = await uploadPage();
-    const payload = { ...envelopePayload({ pageIds: [pageId], signerCount: 1 }), expiresInDays: 4000 };
-    const { res } = await api("/api/envelopes", { method: "POST", body: JSON.stringify(payload) });
-    assertEq(res.status, 400, "status");
+    const pageId2 = await uploadPage();
+    const payload = { ...envelopePayload({ pageIds: [pageId2], signerCount: 1 }), expiresInDays: 4000 };
+    const r = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(r.status, 400, "status");
   });
 
   group("cron endpoint");
 
   await test("cron is closed without a token", async () => {
-    const { res } = await api("/api/cron", { method: "POST", body: "{}" });
-    assertEq(res.status, 404, "an unauthenticated cron call must 404, not 401");
+    const r = await api("/api/cron", { method: "POST", json: {} });
+    assertEq(r.status, 404, "an unauthenticated cron call must 404, not 401");
   });
 
   await test("cron rejects a wrong token the same way (no oracle)", async () => {
-    const { res } = await api("/api/cron", {
-      method: "POST", body: "{}", headers: { "x-cron-token": "definitely-not-the-token" },
-    });
-    assertEq(res.status, 404, "a wrong token must be indistinguishable from an unset one");
+    const r = await api("/api/cron", { method: "POST", json: {}, headers: { "x-cron-token": "definitely-not-the-token" } });
+    assertEq(r.status, 404, "a wrong token must be indistinguishable from an unset one");
+  });
+
+  await test("cron route is mounted, not Next's HTML 404", async () => {
+    const r = await api("/api/cron", { method: "POST", json: {} });
+    assert(r.json !== null, "expected a JSON body — an HTML 404 means the route isn't deployed");
   });
 
   group("send another like this");
 
   await test("duplicates an envelope with a fresh tracking id and no values", async () => {
-    const pageId = await uploadPage();
-    const base = envelopePayload({ pageIds: [pageId], signerCount: 2 });
-    base.fields = [
-      { id: "f0", pageId, signerId: "s0", kind: "signature", x: 20, y: 40, value: null },
-      { id: "f1", pageId, signerId: "s1", kind: "checkbox", x: 60, y: 40, value: null },
+    const pageId2 = await uploadPage();
+    const payload = envelopePayload({ pageIds: [pageId2], signerCount: 2 });
+    payload.fields = [
+      { id: "f0", pageId: pageId2, signerId: "s0", kind: "signature", x: 20, y: 40, value: null },
+      { id: "f1", pageId: pageId2, signerId: "s1", kind: "checkbox", x: 60, y: 40, value: null },
     ];
-    const created = await api("/api/envelopes", { method: "POST", body: JSON.stringify(base) });
-    assertEq(created.res.status, 200, "create status");
-    const orig = created.body.envelope;
+    const created = await api("/api/envelopes", { method: "POST", json: payload });
+    assertEq(created.status, 200, "create status");
+    const orig = created.json.envelope;
 
-    const { res, body } = await api(`/api/envelopes/${orig.id}/duplicate`, { method: "POST", body: "{}" });
-    assertEq(res.status, 200, "duplicate status");
-    const copy = body.envelope;
+    const r = await api(`/api/envelopes/${orig.id}/duplicate`, { method: "POST", json: {} });
+    assertEq(r.status, 200, "duplicate status");
+    const copy = r.json.envelope;
 
     assert(copy.id !== orig.id, "copy must be a new envelope");
     assert(copy.trackingId !== orig.trackingId, "copy must have its own tracking id");
@@ -760,41 +762,39 @@ async function main() {
     assert(copy.fields.every((f) => f.value === null), "no field value may be carried over");
     assert(copy.fields.every((f, i) => f.kind === orig.fields[i].kind), "field kinds must survive the copy");
     assert(copy.fields.every((f) => !orig.fields.some((o) => o.id === f.id)), "copied fields need fresh ids");
-    assertEq(body.copiedFrom, orig.trackingId, "reports what it was copied from");
+    assertEq(r.json.copiedFrom, orig.trackingId, "reports what it was copied from");
   });
 
   await test("duplicate accepts edited signer names and emails", async () => {
-    const pageId = await uploadPage();
-    const created = await api("/api/envelopes", {
-      method: "POST", body: JSON.stringify(envelopePayload({ pageIds: [pageId], signerCount: 1 })),
-    });
-    const orig = created.body.envelope;
-    const { res, body } = await api(`/api/envelopes/${orig.id}/duplicate`, {
+    const pageId2 = await uploadPage();
+    const created = await api("/api/envelopes", { method: "POST", json: envelopePayload({ pageIds: [pageId2], signerCount: 1 }) });
+    assertEq(created.status, 200, "create status");
+    const orig = created.json.envelope;
+    const r = await api(`/api/envelopes/${orig.id}/duplicate`, {
       method: "POST",
-      body: JSON.stringify({ signers: [{ id: "s0", name: "Renamed Person", email: tag("autotest-copy") }] }),
+      json: { signers: [{ id: "s0", name: "Renamed Person", email: tag("autotest-copy") }] },
     });
-    assertEq(res.status, 200, "status");
-    assertEq(body.envelope.signers[0].name, "Renamed Person", "signer name");
-    assertEq(body.envelope.signers[0].email, tag("autotest-copy"), "signer email");
-    assertEq(body.envelope.signers[0].id, "s0", "signer id must be preserved — fields are bound to it");
+    assertEq(r.status, 200, "status");
+    assertEq(r.json.envelope.signers[0].name, "Renamed Person", "signer name");
+    assertEq(r.json.envelope.signers[0].email, tag("autotest-copy"), "signer email");
+    assertEq(r.json.envelope.signers[0].id, "s0", "signer id must be preserved — fields are bound to it");
   });
 
   await test("duplicate refuses an unknown signer id (400)", async () => {
-    const pageId = await uploadPage();
-    const created = await api("/api/envelopes", {
-      method: "POST", body: JSON.stringify(envelopePayload({ pageIds: [pageId], signerCount: 1 })),
-    });
-    const orig = created.body.envelope;
-    const { res } = await api(`/api/envelopes/${orig.id}/duplicate`, {
+    const pageId2 = await uploadPage();
+    const created = await api("/api/envelopes", { method: "POST", json: envelopePayload({ pageIds: [pageId2], signerCount: 1 }) });
+    assertEq(created.status, 200, "create status");
+    const orig = created.json.envelope;
+    const r = await api(`/api/envelopes/${orig.id}/duplicate`, {
       method: "POST",
-      body: JSON.stringify({ signers: [{ id: "someone-new", name: "Nope", email: tag("autotest-nope") }] }),
+      json: { signers: [{ id: "someone-new", name: "Nope", email: tag("autotest-nope") }] },
     });
-    assertEq(res.status, 400, "adding a signer through duplicate would orphan fields, so it must be refused");
+    assertEq(r.status, 400, "adding a signer through duplicate would orphan fields, so it must be refused");
   });
 
   await test("duplicate 404s an unknown envelope", async () => {
-    const { res } = await api("/api/envelopes/does-not-exist/duplicate", { method: "POST", body: "{}" });
-    assertEq(res.status, 404, "status");
+    const r = await api("/api/envelopes/does-not-exist/duplicate", { method: "POST", json: {} });
+    assertEq(r.status, 404, "status");
   });
 
   /* ---------- report ---------- */
