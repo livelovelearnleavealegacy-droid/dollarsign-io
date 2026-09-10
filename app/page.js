@@ -2,7 +2,7 @@
 import { useState, useRef, useCallback } from "react";
 import {
   Upload, Download, PenTool, ChevronLeft, ChevronRight,
-  Users, Plus, X, ArrowRight, FileText, AlertTriangle, Loader2,
+  Users, Plus, X, ArrowRight, FileText, Loader2,
   Search, Clock, LifeBuoy,
 } from "lucide-react";
 import FieldTag from "@/components/FieldTag";
@@ -11,6 +11,28 @@ import {
   FIELD_KINDS, FIELD_LABELS, EXPIRY_CHOICES, DEFAULT_EXPIRY_DAYS, DEFAULT_SIGNING_MODE,
   primaryBtn, iconBtn, chipBtn, inputStyle,
 } from "@/lib/shared";
+
+// Drawn inline rather than imported so the spinner can't depend on a
+// particular lucide version shipping an Hourglass glyph. `.spin` is the
+// existing 0.8s rotation in globals.css.
+function Hourglass({ size = 22, color = "#8A8F98" }) {
+  return (
+    <svg
+      className="spin" width={size} height={size} viewBox="0 0 24 24" fill="none"
+      stroke={color} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M5 2h14" />
+      <path d="M5 22h14" />
+      <path d="M7 2v4a5 5 0 0 0 5 5 5 5 0 0 0 5-5V2" />
+      <path d="M7 22v-4a5 5 0 0 1 5-5 5 5 0 0 1 5 5v4" />
+    </svg>
+  );
+}
+
+// Above this, rendering is slow enough that silence reads as a hang, so
+// the wait gets named instead of just spun at.
+const LARGE_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 export default function Home() {
   const [step, setStep] = useState("landing"); // landing | editor
@@ -29,6 +51,12 @@ export default function Home() {
   const [expiresInDays, setExpiresInDays] = useState(DEFAULT_EXPIRY_DAYS);
   const [submitting, setSubmitting] = useState(false);
   const [checkoutError, setCheckoutError] = useState(null);
+  // { large } while a document is being rendered; null otherwise.
+  const [preparing, setPreparing] = useState(null);
+  // pageId -> true once that page image has actually painted.
+  const [pageLoaded, setPageLoaded] = useState({});
+  // Sticks around after the upload so page-to-page waits are explained too.
+  const [isLargeDocument, setIsLargeDocument] = useState(false);
 
   const containerRef = useRef(null);
   const fileInputRef = useRef(null);
@@ -127,6 +155,12 @@ export default function Home() {
 
   const loadFiles = (fileList, cb, existingCount = 0) => {
     const files = Array.from(fileList);
+    // Rendering happens in this tab, so a big PDF looks like a frozen
+    // page unless something on screen says otherwise.
+    const totalBytes = files.reduce((n, f) => n + (f.size || 0), 0);
+    const large = totalBytes >= LARGE_UPLOAD_BYTES;
+    if (large) setIsLargeDocument(true);
+    setPreparing({ large });
     Promise.all(
       files.map((f) => (f.type === "application/pdf" ? fileToPdfPages(f) : fileToImagePage(f)))
     )
@@ -143,7 +177,8 @@ export default function Home() {
       .catch((err) => {
         console.error(err);
         alert("Something went wrong uploading your document. Please try again.");
-      });
+      })
+      .finally(() => setPreparing(null));
   };
 
   const onUpload = (e) => {
@@ -184,10 +219,16 @@ export default function Home() {
   const emailSigner = (id, email) => setSigners((s) => s.map((x) => (x.id === id ? { ...x, email } : x)));
   const toggleSelf = (id) => setSigners((s) => s.map((x) => ({ ...x, isSelf: x.id === id ? !x.isSelf : false })));
 
+  // New fields land in the upper quartile rather than dead centre: a
+  // tag that appears near the top of the page is visible without
+  // scrolling, so people can see it arrive and drag it from there.
   const addField = (kind) => {
     if (!activeSignerId || !pages[pageIdx]) return;
-    setFields((f) => [...f, { id: uid(), pageId: pages[pageIdx].id, signerId: activeSignerId, kind, x: 50, y: 50, value: null }]);
+    setFields((f) => [...f, { id: uid(), pageId: pages[pageIdx].id, signerId: activeSignerId, kind, x: 50, y: 22, value: null }]);
   };
+  const markPageLoaded = useCallback((id) => {
+    setPageLoaded((m) => (m[id] ? m : { ...m, [id]: true }));
+  }, []);
   const dragField = useCallback((id, x, y) => {
     setFields((fs) => fs.map((f) => (f.id === id ? { ...f, x, y } : f)));
   }, []);
@@ -248,6 +289,30 @@ export default function Home() {
 
   return (
     <div style={{ minHeight: "60vh" }}>
+      {/* Rendering a PDF happens in this tab and can take a while. Without
+          this the Upload button just goes quiet, which reads as broken. */}
+      {preparing && (
+        <div
+          role="status"
+          aria-live="polite"
+          style={{
+            position: "fixed", inset: 0, zIndex: 60, background: "rgba(255,255,255,0.94)",
+            display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14,
+            padding: 24, textAlign: "center",
+          }}
+        >
+          <Hourglass size={34} color="var(--accent)" />
+          <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, color: "var(--ink)" }}>
+            Preparing your document…
+          </div>
+          {preparing.large && (
+            <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, color: "#8A8F98", maxWidth: 340, lineHeight: 1.5 }}>
+              This is a large file, so it takes a little longer. Please keep this tab open.
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ---------- LANDING ---------- */}
       {step === "landing" && (
         <div>
@@ -323,16 +388,6 @@ export default function Home() {
       {/* ---------- EDITOR ---------- */}
       {step === "editor" && currentPage && (
         <div style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 130px" }}>
-          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "#FFF8E8", border: "1px solid #F4B942", borderRadius: 8, padding: "10px 12px", margin: "0 0 16px" }}>
-            <AlertTriangle size={15} color="#946B00" style={{ flexShrink: 0, marginTop: 1 }} />
-            <p style={{ fontSize: 16, color: "#6B5000", lineHeight: 1.45, margin: 0 }}>
-              The U.S. ESIGN Act doesn't cover every document type — don't use this for wills or testamentary
-              trusts, family law matters (divorce, adoption), court orders, eviction/foreclosure/repossession
-              notices, utility cancellation notices, health or life insurance cancellations, product recalls,
-              or hazardous materials transport documents. Use paper for those.
-            </p>
-          </div>
-
           <input
             value={documentName}
             onChange={(e) => setDocumentName(e.target.value)}
@@ -393,6 +448,62 @@ export default function Home() {
             </div>
           </div>
 
+          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 400, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 12px" }}>
+            Pick a signer above, then click a field to drop it on this page and drag it where you want it.
+          </p>
+
+          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            {FIELD_KINDS.map((k) => (
+              <button
+                key={k}
+                onClick={() => addField(k)}
+                disabled={!activeSignerId}
+                style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}
+              >
+                <Plus size={13} /> {FIELD_LABELS[k]} field
+              </button>
+            ))}
+          </div>
+
+          {/* aspectRatio holds the page's real shape before the image
+              arrives, so nothing jumps underneath a field being dragged
+              and the drop coordinates stay honest while it loads. */}
+          <div
+            ref={containerRef}
+            style={{
+              position: "relative", border: "1px solid var(--line)", borderRadius: 8,
+              overflow: "hidden", background: "#fff", marginBottom: 14,
+              aspectRatio: currentPage.w && currentPage.h ? `${currentPage.w} / ${currentPage.h}` : undefined,
+            }}
+          >
+            {!pageLoaded[currentPage.id] && (
+              <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 10, background: "#fff" }}>
+                <Hourglass size={26} />
+                <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "#8A8F98" }}>
+                  Loading page {pageIdx + 1} of {pages.length}…
+                </span>
+                {isLargeDocument && (
+                  <span style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13, color: "#8A8F98", maxWidth: 320, textAlign: "center", lineHeight: 1.45 }}>
+                    Large files take a little longer.
+                  </span>
+                )}
+              </div>
+            )}
+            <img
+              key={currentPage.id}
+              src={currentPage.src}
+              alt={`page ${pageIdx + 1}`}
+              // A cached image can finish before React attaches onLoad,
+              // which would otherwise leave the hourglass spinning forever.
+              ref={(el) => { if (el && el.complete) markPageLoaded(currentPage.id); }}
+              onLoad={() => markPageLoaded(currentPage.id)}
+              style={{ width: "100%", display: "block", opacity: pageLoaded[currentPage.id] ? 1 : 0 }}
+            />
+            {pageFields.map((f) => (
+              <FieldTag key={f.id} field={f} signer={signers.find((s) => s.id === f.signerId)} onDrag={dragField} onRemove={removeField} containerRef={containerRef} />
+            ))}
+          </div>
+
           <div style={{ background: "var(--card)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "var(--shadow)", padding: 12, marginBottom: 14 }}>
             <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1.5, color: "#8A8F98", marginBottom: 10 }}>SENDING</div>
 
@@ -438,30 +549,6 @@ export default function Home() {
                 unsigned signers are reminded along the way
               </span>
             </label>
-          </div>
-
-          <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 14, fontWeight: 400, color: "var(--ink)", lineHeight: 1.5, margin: "0 0 12px" }}>
-           Complete fields above and locate page where you want to place signatures. Select signer then click desired fields. Scroll down to find fields and drag them to desired location. Larger documents take longer to load.
-          </p>
-
-          <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-            {FIELD_KINDS.map((k) => (
-              <button
-                key={k}
-                onClick={() => addField(k)}
-                disabled={!activeSignerId}
-                style={{ ...chipBtn, opacity: activeSignerId ? 1 : 0.4 }}
-              >
-                <Plus size={13} /> {FIELD_LABELS[k]} field
-              </button>
-            ))}
-          </div>
-
-          <div ref={containerRef} style={{ position: "relative", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", background: "#fff" }}>
-            <img src={currentPage.src} alt={`page ${pageIdx + 1}`} style={{ width: "100%", display: "block" }} />
-            {pageFields.map((f) => (
-              <FieldTag key={f.id} field={f} signer={signers.find((s) => s.id === f.signerId)} onDrag={dragField} onRemove={removeField} containerRef={containerRef} />
-            ))}
           </div>
 
           <div style={{ position: "fixed", left: 0, right: 0, bottom: 0, background: "#fff", borderTop: "1px solid var(--line)", padding: "12px 16px" }}>
