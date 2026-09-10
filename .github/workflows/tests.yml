@@ -23,8 +23,7 @@ on:
         required: false
         type: boolean
         default: false
-  push:
-    branches: [main]
+
   schedule:
     # Weekly, Monday 08:00 UTC. Deliberately not daily: every run leaves
     # two unpaid test envelopes and two page files behind, and there is
