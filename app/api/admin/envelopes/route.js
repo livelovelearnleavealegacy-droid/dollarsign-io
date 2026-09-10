@@ -100,7 +100,13 @@ export async function GET(req) {
     // Why a person needs to look, in plain words. An empty list means
     // this envelope is fine and nobody has to think about it.
     const attention = [];
-    if (signers.some((s) => s.undeliverable)) attention.push("undeliverable address");
+    // Only while the envelope is still open, and only for somebody who
+    // has not signed. A failed delivery on a voided, declined or
+    // completed envelope is history — the same trap as the fingerprint
+    // rule, which kept flagging documents nothing could fix.
+    if (e.status === "sent" && signers.some((s) => s.undeliverable && !s.signed)) {
+      attention.push("undeliverable address");
+    }
     if (e.status === "pending_payment" && paid) attention.push("paid but never sent");
     if (e.status === "sent" && sentDays !== null && sentDays >= STALLED_DAYS) attention.push(`no movement in ${Math.floor(sentDays)} days`);
     const completedAt = Date.parse(log.find((x) => x.type === "completed")?.at || "");
