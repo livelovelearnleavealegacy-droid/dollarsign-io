@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { listAllEnvelopes } from "@/lib/db";
+import { listAllEnvelopes, countTestEnvelopes } from "@/lib/db";
 import { REMINDER_DAYS } from "@/lib/shared";
 
 /**
@@ -17,7 +17,21 @@ export const dynamic = "force-dynamic";
 // An envelope that is merely waiting is normal. These are the states
 // where waiting will never resolve on its own, which is the only useful
 // definition of "needs attention".
+//
+// Note what is NOT here: abandonment before payment. On a $1.99 impulse
+// purchase most visitors never pay, there is nothing to do about it,
+// and flagging it buried the one real problem under twenty-five
+// non-problems the first time this page was opened.
 const STALLED_DAYS = 7;
+
+// The API suite signs its work — see tests/run-tests.mjs. Its envelopes
+// are real rows and stay visible on request, but they are not the
+// business and must not be what greets somebody opening this page.
+function isTestEnvelope(e) {
+  const email = String(e.senderEmail || "").toLowerCase();
+  const name = String(e.senderName || "").toLowerCase();
+  return email.includes("+autotest") || name.includes("autotest");
+}
 
 function daysSince(iso) {
   if (!iso) return null;
@@ -34,8 +48,9 @@ export async function GET(req) {
 
   const limit = Math.min(Math.max(parseInt(url.searchParams.get("limit"), 10) || 200, 1), 500);
   const statusFilter = url.searchParams.get("status") || null;
+  const includeTests = url.searchParams.get("includeTests") === "1";
 
-  const envelopes = listAllEnvelopes({ limit, status: statusFilter });
+  const envelopes = listAllEnvelopes({ limit, status: statusFilter, includeTests });
   const now = Date.now();
 
   const rows = envelopes.map((e) => {
@@ -73,7 +88,6 @@ export async function GET(req) {
     const attention = [];
     if (signers.some((s) => s.undeliverable)) attention.push("undeliverable address");
     if (e.status === "pending_payment" && paid) attention.push("paid but never sent");
-    if (e.status === "pending_payment" && ageDays !== null && ageDays > 1) attention.push("abandoned before payment");
     if (e.status === "sent" && sentDays !== null && sentDays >= STALLED_DAYS) attention.push(`no movement in ${Math.floor(sentDays)} days`);
     if (e.status === "completed" && !e.documentHash) attention.push("completed without a fingerprint");
     if (log.some((x) => x.type === "email_failed")) attention.push("an email failed to send");
@@ -85,6 +99,7 @@ export async function GET(req) {
 
     return {
       id: e.id,
+      isTest: isTestEnvelope(e),
       trackingId: e.trackingId,
       documentName: e.documentName,
       status: e.status,
@@ -110,15 +125,19 @@ export async function GET(req) {
     };
   });
 
-  const count = (s) => rows.filter((r) => r.status === s).length;
-  const last30 = rows.filter((r) => r.ageDays !== null && r.ageDays <= 30);
+  // Every count below is of real envelopes. Test rows are counted once,
+  // separately, so the number on screen is the business rather than the
+  // harness.
+  const real = rows.filter((r) => !r.isTest);
+  const count = (s) => real.filter((r) => r.status === s).length;
+  const last30 = real.filter((r) => r.ageDays !== null && r.ageDays <= 30);
 
   return NextResponse.json({
     at: new Date().toISOString(),
     returned: rows.length,
     limit,
     summary: {
-      needsAttention: rows.filter((r) => r.attention.length).length,
+      needsAttention: real.filter((r) => r.attention.length).length,
       awaitingSignature: count("sent"),
       completed: count("completed"),
       unpaidDrafts: count("pending_payment"),
@@ -127,6 +146,9 @@ export async function GET(req) {
       expired: count("expired"),
       completedLast30Days: last30.filter((r) => r.status === "completed").length,
       sentLast30Days: last30.filter((r) => r.sentAt).length,
+      // Counted in the database, not among the rows returned — they are
+      // excluded from the query unless asked for.
+      testEnvelopes: countTestEnvelopes(),
     },
     envelopes: rows,
   });

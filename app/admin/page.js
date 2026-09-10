@@ -52,6 +52,10 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("");
   const [onlyAttention, setOnlyAttention] = useState(false);
+  // Hidden by default: the test suite outnumbers real envelopes roughly
+  // seventy to one, and a page that opens on somebody else's noise is
+  // a page nobody opens twice.
+  const [showTests, setShowTests] = useState(false);
 
   useEffect(() => {
     try {
@@ -60,12 +64,14 @@ export default function AdminPage() {
     } catch { /* storage blocked — the form still works */ }
   }, []);
 
-  const load = useCallback(async (t) => {
+  const load = useCallback(async (t, withTests = false) => {
     if (!t) return;
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/admin/envelopes?limit=300", { headers: { "x-admin-token": t } });
+      const res = await fetch(`/api/admin/envelopes?limit=300${withTests ? "&includeTests=1" : ""}`, {
+        headers: { "x-admin-token": t },
+      });
       if (res.status === 404) throw new Error("That token doesn't match — or ADMIN_TOKEN isn't set in Railway.");
       if (!res.ok) throw new Error(`Server returned ${res.status}.`);
       setData(await res.json());
@@ -77,7 +83,7 @@ export default function AdminPage() {
     }
   }, []);
 
-  useEffect(() => { if (token) load(token); }, [token, load]);
+  useEffect(() => { if (token) load(token, showTests); }, [token, showTests, load]);
 
   const signIn = (e) => {
     e.preventDefault();
@@ -133,7 +139,7 @@ export default function AdminPage() {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, flexWrap: "wrap", marginBottom: 18 }}>
         <h1 style={{ ...ui, fontSize: 24, fontWeight: 700, margin: 0, color: "var(--ink)" }}>Operator view</h1>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => load(token)} disabled={loading}
+          <button onClick={() => load(token, showTests)} disabled={loading}
             style={{ ...ui, background: "none", border: "1px solid var(--line)", borderRadius: 8, padding: "7px 12px", fontSize: 14, cursor: "pointer", color: "var(--ink)" }}>
             {loading ? <Loader2 size={13} className="spin" style={{ marginRight: 5 }} /> : <RefreshCw size={13} style={{ marginRight: 5 }} />}
             Refresh
@@ -169,6 +175,12 @@ export default function AdminPage() {
           <input type="checkbox" id="only-attention" checked={onlyAttention} onChange={(e) => setOnlyAttention(e.target.checked)} />
           Only what needs me
         </label>
+        {!!s?.testEnvelopes && (
+          <label style={{ ...ui, display: "flex", gap: 7, alignItems: "center", fontSize: 15, color: "#8A8F98", cursor: "pointer" }}>
+            <input type="checkbox" id="show-tests" checked={showTests} onChange={(e) => setShowTests(e.target.checked)} />
+            Show {s.testEnvelopes} test envelope{s.testEnvelopes === 1 ? "" : "s"}
+          </label>
+        )}
       </div>
 
       {!envelopes.length && !loading && (
@@ -187,6 +199,7 @@ export default function AdminPage() {
             }}>
             <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "baseline" }}>
               <div style={{ ...ui, fontSize: 16, fontWeight: 600, color: "var(--ink)" }}>
+                {e.isTest && <span style={{ fontSize: 12.5, fontWeight: 700, letterSpacing: ".05em", color: "#8A8F98", marginRight: 7 }}>TEST</span>}
                 {e.documentName || "Untitled"}{" "}
                 <span style={{ fontFamily: "monospace", fontSize: 13, color: "#8A8F98", fontWeight: 400 }}>{e.trackingId}</span>
               </div>
