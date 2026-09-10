@@ -26,10 +26,17 @@ export const dynamic = "force-dynamic";
 // stop reading it.
 const STALLED_DAYS = 7;
 
-// A missing fingerprint on something signed today is a live bug. On
-// something signed before the feature shipped it is history, and no
-// amount of attention will produce one.
-const FINGERPRINT_GRACE_DAYS = 7;
+/* Server-side document fingerprinting shipped on Sept 8, 2026. Every
+   envelope completed before it carries documentHash: null permanently
+   and always will — there is nothing to fix and nothing to look at.
+
+   This is a fixed date rather than a rolling window on purpose. The
+   first attempt used "completed within the last 7 days", which failed
+   immediately: the affected envelopes were two and three days old, so
+   they were recent AND pre-feature at the same time. Age was never the
+   thing that separated them. A missing fingerprint on anything
+   completed after this date is a real bug worth surfacing. */
+const FINGERPRINT_SINCE = Date.parse("2026-09-09T00:00:00Z");
 
 // The API suite signs its work — see tests/run-tests.mjs. Its envelopes
 // are real rows and stay visible on request, but they are not the
@@ -96,8 +103,8 @@ export async function GET(req) {
     if (signers.some((s) => s.undeliverable)) attention.push("undeliverable address");
     if (e.status === "pending_payment" && paid) attention.push("paid but never sent");
     if (e.status === "sent" && sentDays !== null && sentDays >= STALLED_DAYS) attention.push(`no movement in ${Math.floor(sentDays)} days`);
-    const completedDays = daysSince(log.find((x) => x.type === "completed")?.at || null);
-    if (e.status === "completed" && !e.documentHash && completedDays !== null && completedDays <= FINGERPRINT_GRACE_DAYS) {
+    const completedAt = Date.parse(log.find((x) => x.type === "completed")?.at || "");
+    if (e.status === "completed" && !e.documentHash && Number.isFinite(completedAt) && completedAt >= FINGERPRINT_SINCE) {
       attention.push("completed without a fingerprint");
     }
     if (log.some((x) => x.type === "email_failed")) attention.push("an email failed to send");
