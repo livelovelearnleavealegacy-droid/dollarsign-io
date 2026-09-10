@@ -18,11 +18,18 @@ export const dynamic = "force-dynamic";
 // where waiting will never resolve on its own, which is the only useful
 // definition of "needs attention".
 //
-// Note what is NOT here: abandonment before payment. On a $1.99 impulse
-// purchase most visitors never pay, there is nothing to do about it,
-// and flagging it buried the one real problem under twenty-five
-// non-problems the first time this page was opened.
+// THE RULE FOR THIS LIST: a flag must have an action attached. Twice now
+// a condition that was true but unfixable — abandonment before payment,
+// then envelopes that completed before server-side fingerprinting
+// existed — buried the one real problem under a pile of things nobody
+// can do anything about. A number that is mostly noise trains you to
+// stop reading it.
 const STALLED_DAYS = 7;
+
+// A missing fingerprint on something signed today is a live bug. On
+// something signed before the feature shipped it is history, and no
+// amount of attention will produce one.
+const FINGERPRINT_GRACE_DAYS = 7;
 
 // The API suite signs its work — see tests/run-tests.mjs. Its envelopes
 // are real rows and stay visible on request, but they are not the
@@ -89,7 +96,10 @@ export async function GET(req) {
     if (signers.some((s) => s.undeliverable)) attention.push("undeliverable address");
     if (e.status === "pending_payment" && paid) attention.push("paid but never sent");
     if (e.status === "sent" && sentDays !== null && sentDays >= STALLED_DAYS) attention.push(`no movement in ${Math.floor(sentDays)} days`);
-    if (e.status === "completed" && !e.documentHash) attention.push("completed without a fingerprint");
+    const completedDays = daysSince(log.find((x) => x.type === "completed")?.at || null);
+    if (e.status === "completed" && !e.documentHash && completedDays !== null && completedDays <= FINGERPRINT_GRACE_DAYS) {
+      attention.push("completed without a fingerprint");
+    }
     if (log.some((x) => x.type === "email_failed")) attention.push("an email failed to send");
 
     const expiresInDays = e.expiresAt ? +((new Date(e.expiresAt).getTime() - now) / 864e5).toFixed(1) : null;
