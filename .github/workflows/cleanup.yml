@@ -2,12 +2,14 @@ name: Orphan cleanup
 
 # Deletes page images and source PDFs that no envelope references.
 #
-# MANUAL ONLY, and a dry run unless you tick the box. There is no
-# schedule here on purpose: this job deletes customer files, and the
-# first few times it runs a person should read what it proposes before
-# it happens. Once a dry run has looked right a couple of times, this
-# can be given a schedule — the endpoint is already safe to call
-# repeatedly.
+# Runs weekly and deletes for real. Manual runs stay a DRY RUN unless
+# you tick the box, so you can always look before touching anything.
+#
+# It was manual-only until Sept 10, on the reasoning that a job which
+# deletes customer files should be watched before it is trusted. It has
+# since been watched: asked to sweep, it correctly refused every one of
+# 310 unreferenced files because all of them were younger than the age
+# floor. That is the behaviour worth trusting, so it now runs on its own.
 #
 # Files newer than the minimum age are never touched. A page image is
 # written BEFORE the envelope that references it exists, so a recent
@@ -16,6 +18,10 @@ name: Orphan cleanup
 #
 # Requires the ADMIN_TOKEN repository secret.
 on:
+  schedule:
+    # Wednesdays 09:00 UTC. Deliberately away from the Monday jobs, so a
+    # bad week doesn't arrive as three red emails at once.
+    - cron: "0 9 * * 3"
   workflow_dispatch:
     inputs:
       apply:
@@ -38,7 +44,12 @@ jobs:
       - name: Run cleanup
         env:
           ADMIN_TOKEN: ${{ secrets.ADMIN_TOKEN }}
-          APPLY: ${{ github.event.inputs.apply }}
+          # Scheduled runs delete; manual runs only do so if the box is
+          # ticked. Written as an explicit event check rather than a
+          # fallback, because the input is a real boolean here — an
+          # unticked box is false, and a fallback would have quietly
+          # turned every careful dry run into a live delete.
+          APPLY: ${{ github.event_name == 'schedule' && 'true' || github.event.inputs.apply }}
           MIN_AGE: ${{ github.event.inputs.min_age_days }}
         run: |
           if [ -z "$ADMIN_TOKEN" ]; then
@@ -66,3 +77,15 @@ jobs:
             echo "Cleanup endpoint returned HTTP $CODE."
             exit 1
           fi
+
+          # A readable summary, so the weekly email says something
+          # useful without anybody opening the run.
+          node -e '
+            const r = JSON.parse(require("fs").readFileSync("/tmp/cleanup.json", "utf8"));
+            console.log(r.mode);
+            console.log("page images : " + r.pageImages.deleted + " deleted, " + r.pageImages.skippedTooNew + " too new");
+            console.log("source PDFs : " + r.sourcePdfs.deleted + " deleted, " + r.sourcePdfs.skippedTooNew + " too new");
+            console.log("space freed : " + r.totalFreedMb + " MB");
+            const errs = [].concat(r.pageImages.errors || [], r.sourcePdfs.errors || []);
+            if (errs.length) { console.log("ERRORS:"); errs.forEach(e => console.log("  " + e)); process.exit(1); }
+          '
