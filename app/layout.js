@@ -55,7 +55,17 @@ export default function RootLayout({ children }) {
           <div>
             <a href="mailto:support@dollarsign.io" style={footerLink}>support@dollarsign.io</a>
           </div>
-          <div style={{ marginTop: 4 }}>
+          {/* Moved out of the editor and into the footer so it sits on
+              every page rather than only the one where a document is
+              being set up — same size and weight as the links above. */}
+          <div style={{ maxWidth: 620, margin: "10px auto 0", lineHeight: 1.5, color: "#9AA0AA" }}>
+            The U.S. ESIGN Act doesn&apos;t cover every document type — don&apos;t use this for wills or
+            testamentary trusts, family law matters (divorce, adoption), court orders,
+            eviction/foreclosure/repossession notices, utility cancellation notices, health or life
+            insurance cancellations, product recalls, or hazardous materials transport documents. Use
+            paper for those.
+          </div>
+          <div style={{ marginTop: 10 }}>
             DollarSign.io © Live, Love, Learn, Leave a Legacy LLC
           </div>
         </footer>
