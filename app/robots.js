@@ -12,7 +12,7 @@ export default function robots() {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/e/", "/sign/", "/void/", "/checkout", "/api/"],
+        disallow: ["/e/", "/sign/", "/void/", "/checkout", "/admin", "/api/"],
       },
     ],
     sitemap: `${BASE}/sitemap.xml`,

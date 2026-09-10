@@ -6,7 +6,7 @@
 // are unguessable, but "unguessable" stops being a defence the moment
 // one is pasted into a public page a crawler can reach, so say it out
 // loud in a header rather than relying on obscurity.
-const PRIVATE_PREFIXES = ["/e/:path*", "/sign/:path*", "/void/:path*", "/checkout/:path*", "/checkout"];
+const PRIVATE_PREFIXES = ["/e/:path*", "/sign/:path*", "/void/:path*", "/checkout/:path*", "/checkout", "/admin/:path*", "/admin"];
 
 const nextConfig = {
   async redirects() {
