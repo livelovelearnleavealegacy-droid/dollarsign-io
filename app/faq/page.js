@@ -249,7 +249,13 @@ export default function FaqPage() {
 
       <Q q="Is the signed PDF searchable?">
         <p style={p}>
-          Not currently. Uploaded documents are converted to page images, so the final PDF is a picture of each signed page rather than selectable text. It&apos;s a faithful visual record, but you can&apos;t copy text out of it.
+          If you uploaded a PDF, it is as searchable as your original was. We keep your original file and stamp the signatures onto its real pages, so text stays text and the file stays close to the size you started with. We don&apos;t run OCR, though — if your original was a scan with no selectable text, the signed copy won&apos;t have any either.
+        </p>
+        <p style={p}>
+          Individual pages fall back to a picture of themselves when we can&apos;t use the original: you uploaded an image (PNG or JPG) rather than a PDF, the PDF is larger than 50 MB, it&apos;s encrypted or damaged and won&apos;t reopen, or that particular page is rotated. It&apos;s decided page by page, so one document can be part original and part image.
+        </p>
+        <p style={p}>
+          You never have to guess which you got. The Certificate of Completion on the last page reports it — <strong>Pages from original — 9 of 10</strong>, or whatever the real numbers are. Envelopes sent before September 9, 2026 are image-based throughout.
         </p>
       </Q>
 
