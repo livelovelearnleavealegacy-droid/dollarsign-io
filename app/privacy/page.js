@@ -1,8 +1,11 @@
 import LegalPage, { h2, h3, p, ul, li, link, callout } from "@/components/LegalPage";
 
 export const metadata = {
-  title: "Privacy Policy — DollarSign.io",
-  description: "What DollarSign.io collects, why, who it is shared with, and how to have it deleted.",
+  title: "Privacy Policy",
+  description:
+    "What we collect, who else touches it, and how to have your documents deleted. We do not sell data, advertise, or track you across the web.",
+  alternates: { canonical: "/privacy" },
+  openGraph: { title: "Privacy Policy — DollarSign.io", url: "/privacy" },
 };
 
 export default function PrivacyPage() {
