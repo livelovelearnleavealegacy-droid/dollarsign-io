@@ -116,6 +116,8 @@ export default function RootLayout({ children }) {
           <div>
             <a href="/check" style={footerLink}>Something go wrong?</a>
             <span style={dot}>·</span>
+            <a href="/guides" style={footerLink}>Guides</a>
+            <span style={dot}>·</span>
             <a href="/faq" style={footerLink}>FAQ &amp; support</a>
             <span style={dot}>·</span>
             <a href="/terms" style={footerLink}>Terms</a>
