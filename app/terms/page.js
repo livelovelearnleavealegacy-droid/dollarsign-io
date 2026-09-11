@@ -1,8 +1,11 @@
 import LegalPage, { h2, p, ul, li, link, callout } from "@/components/LegalPage";
 
 export const metadata = {
-  title: "Terms of Service — DollarSign.io",
-  description: "The terms that govern your use of DollarSign.io.",
+  title: "Terms of Service",
+  description:
+    "What you pay, what we deliver, our no-questions refund policy, and the documents that may not be signed electronically.",
+  alternates: { canonical: "/terms" },
+  openGraph: { title: "Terms of Service — DollarSign.io", url: "/terms" },
 };
 
 export default function TermsPage() {
