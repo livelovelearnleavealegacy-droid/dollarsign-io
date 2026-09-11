@@ -34,6 +34,40 @@ function Hourglass({ size = 22, color = "#8A8F98" }) {
 // the wait gets named instead of just spun at.
 const LARGE_UPLOAD_BYTES = 4 * 1024 * 1024;
 
+// Homepage structured data. The Offer is the point: it lets a search
+// result carry "$1.99" next to the link, which is the single most
+// persuasive thing about this product and the thing competitors can't
+// match. Rendered on the landing view only — the editor isn't a
+// product page.
+const productLd = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "DollarSign.io",
+  applicationCategory: "BusinessApplication",
+  applicationSubCategory: "Electronic Signature",
+  operatingSystem: "Any (web-based)",
+  url: "https://dollarsign.io",
+  description:
+    "Send a document for electronic signature for a flat $1.99. No subscription, no account, up to 10 signers and 100 pages, with a signed PDF and certificate of completion.",
+  offers: {
+    "@type": "Offer",
+    price: String(FLAT_PRICE.toFixed(2)),
+    priceCurrency: "USD",
+    availability: "https://schema.org/InStock",
+    url: "https://dollarsign.io",
+    description: "Flat price per envelope. No subscription.",
+  },
+  featureList: [
+    "No account required",
+    "No subscription",
+    `Up to ${MAX_SIGNERS} signers per envelope`,
+    `Up to ${MAX_PAGES} pages per envelope`,
+    "ESIGN compliant with certificate of completion",
+    "Signed PDF delivered to every signer",
+    "Automatic reminders and optional expiry",
+  ],
+};
+
 export default function Home() {
   const [step, setStep] = useState("landing"); // landing | editor
   const [pages, setPages] = useState([]);
@@ -316,16 +350,27 @@ export default function Home() {
       {/* ---------- LANDING ---------- */}
       {step === "landing" && (
         <div>
+          <script
+            type="application/ld+json"
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(productLd) }}
+          />
           <div style={{ padding: "56px 24px 56px", textAlign: "center" }}>
-            <div style={{ maxWidth: 560, margin: "0 auto" }}>
+            <div style={{ maxWidth: 680, margin: "0 auto" }}>
               <p style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 16, letterSpacing: 1, color: "#8A8F98", margin: "0 0 34px" }}>
                 Pay as you go. Sign with confidence.
               </p>
-              <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "clamp(30px,6vw,44px)", lineHeight: 1.12, margin: "0 0 16px", color: "var(--ink)" }}>
-                Multi-Page. Multi-Signer.<br />One Envelope.
+              {/* The h1 is the most heavily weighted text on the page, so
+                  it says what the product is in the words people search
+                  for. The old slogan still leads the paragraph below —
+                  it just isn't carrying the search load any more. */}
+              <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "clamp(28px,5.4vw,42px)", lineHeight: 1.14, margin: "0 0 18px", color: "var(--ink)" }}>
+                Sign documents online for ${FLAT_PRICE.toFixed(2)}
+                <br />— no subscription, no account
               </h1>
-              <p style={{ fontSize: 16, color: "#5B5F6B", maxWidth: 440, lineHeight: 1.55, margin: "0 auto 32px" }}>
-                No subscription. Upload your document, place your signer, date and text fields, pay and send.
+              <p style={{ fontSize: 17, color: "#5B5F6B", maxWidth: 520, lineHeight: 1.55, margin: "0 auto 32px" }}>
+                Multi-page. Multi-signer. One envelope. Upload a PDF, add up to {MAX_SIGNERS} signers,
+                place signature, date and text fields, and send. Everyone gets a legally binding signed
+                PDF with a certificate of completion.
               </p>
               <button onClick={() => fileInputRef.current.click()} style={{ ...primaryBtn, fontSize: 16, padding: "13px 26px", boxShadow: "var(--shadow)" }}>
                 <Upload size={17} style={{ marginRight: 8 }} /> Upload Document
