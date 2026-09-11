@@ -1,172 +1,138 @@
-import LegalPage, { h2, p, ul, li, link, callout } from "@/components/LegalPage";
+import LegalPage, { h2, h3, p, ul, li, link, callout } from "@/components/LegalPage";
 
 export const metadata = {
-  title: "Terms of Service",
+  title: "Privacy Policy",
   description:
-    "What you pay, what we deliver, our no-questions refund policy, and the documents that may not be signed electronically.",
-  alternates: { canonical: "/terms" },
-  openGraph: { title: "Terms of Service — DollarSign.io", url: "/terms" },
+    "What we collect, who else touches it, and how to have your documents deleted. We do not sell data, advertise, or track you across the web.",
+  alternates: { canonical: "/privacy" },
+  openGraph: { title: "Privacy Policy — DollarSign.io", url: "/privacy" },
 };
 
-export default function TermsPage() {
+export default function PrivacyPage() {
   return (
     <LegalPage
-      title="Terms of Service"
-      updated="September 8, 2026"
-      intro="These terms are a contract between you and Live, Love, Learn, Leave a Legacy LLC. Please read them before you send a document for signature."
+      title="Privacy Policy"
+      updated="September 11, 2026"
+      intro="This explains what DollarSign.io collects, why we collect it, who else touches it, and how to get it deleted."
     >
       <div style={callout}>
-        <strong>The short version.</strong> You pay $1.99 per envelope. We deliver it, collect signatures, and give you a signed PDF with an audit certificate. If something goes wrong, email{" "}
-        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> and we will refund you, no questions asked. We are a tool, not a law firm, and there are some documents you should not sign electronically at all — those are listed below.
+        <strong>The short version.</strong> We collect what we need to deliver your document and to prove how it was signed — names, email addresses, the document itself, and the IP address and browser of each signer at the moment they consented and signed. We do not sell it, we do not advertise, and we do not track you around the internet. Email{" "}
+        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> to have your documents deleted.
       </div>
 
-      <h2 style={h2}>1. Who we are</h2>
-      <p style={p}>
-        DollarSign.io (the &quot;Service&quot;) is operated by Live, Love, Learn, Leave a Legacy LLC (&quot;we,&quot; &quot;us,&quot; &quot;our&quot;). By uploading a document, sending an envelope, or signing one, you agree to these Terms of Service. If you do not agree, do not use the Service.
-      </p>
+      <h2 style={h2}>What we collect</h2>
 
-      <h2 style={h2}>2. What the Service does</h2>
-      <p style={p}>
-        You upload a document, add signers, place signature and other fields, and pay a flat fee. We email each signer a link to review and sign. When everyone has signed, we produce a combined PDF containing the signed pages and a Certificate of Completion recording the signing events.
-      </p>
-      <p style={p}>
-        Your uploaded document is converted into page images when you upload it. The final signed PDF is assembled from those images. It is a faithful visual record of what was signed, but it is not a text-searchable copy of your original file, and the original file&apos;s underlying text and formatting data are not retained.
-      </p>
-
-      <h2 style={h2}>3. Pricing and payment</h2>
+      <h3 style={h3}>Information you give us</h3>
       <ul style={ul}>
-        <li style={li}>Each envelope costs a flat $1.99, regardless of how many pages or signers it contains.</li>
-        <li style={li}>An envelope may contain up to 10 signers and up to 100 pages. These limits are enforced when the envelope is created.</li>
-        <li style={li}>Payment is collected through Stripe before the envelope is sent. We never see or store your full card number.</li>
-        <li style={li}>Prices may change, but a change never affects an envelope you have already paid for.</li>
+        <li style={li}><strong>Your name and email address</strong> as the sender of an envelope.</li>
+        <li style={li}><strong>Each signer&apos;s name and email address,</strong> as entered by the sender.</li>
+        <li style={li}><strong>Your document.</strong> When you upload a PDF, the original file is uploaded and stored on our server. Your browser also renders each page to an image, and those images are stored as well. If you upload an image file instead, that file is what we store. Whatever your document contains, we store.</li>
+        <li style={li}><strong>Field values entered by signers</strong> — drawn or typed signatures, dates, and text.</li>
       </ul>
 
-      <h2 style={h2}>4. Refunds</h2>
+      <h3 style={h3}>Information we record automatically</h3>
       <p style={p}>
-        If you are unhappy with the Service for any reason, email{" "}
-        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> and we will refund your payment. We do not require an explanation and we do not investigate. Refunds are issued to the original payment method and typically appear within five to ten business days, depending on your bank.
-      </p>
-      <p style={p}>
-        Please email us before disputing a charge with your bank. A dispute costs us substantially more than the payment itself, takes far longer to resolve for you, and we would rather just refund you.
-      </p>
-
-      <h2 style={h2}>5. Your responsibilities</h2>
-      <p style={p}>When you send an envelope, you are confirming all of the following:</p>
-      <ul style={ul}>
-        <li style={li}>You have the right to send the document and to share it with the signers you have listed.</li>
-        <li style={li}>The email addresses you entered are correct and belong to the people you intend to sign. We deliver to the address you provide, and we cannot recall a document once it has been sent.</li>
-        <li style={li}>You are not using the Service to commit fraud, to impersonate anyone, or to obtain a signature by deception.</li>
-        <li style={li}>You will keep your own copy of the completed document. See section 9 on retention.</li>
-      </ul>
-
-      <h2 style={h2}>6. Documents you should not sign electronically</h2>
-      <p style={p}>
-        Federal law (the ESIGN Act) and most state versions of UETA specifically exclude certain categories of document from electronic signature, or require additional formalities we do not provide. Do not use the Service for:
+        To make a signature defensible under the ESIGN Act, we have to record how it happened. For each signer we log, server-side:
       </p>
       <ul style={ul}>
-        <li style={li}>Wills, codicils, and testamentary trusts</li>
-        <li style={li}>Documents requiring notarization, a witness, or a wet-ink signature under applicable law</li>
-        <li style={li}>Adoption, divorce, and other family-law matters</li>
-        <li style={li}>Court filings, orders, notices, and pleadings</li>
-        <li style={li}>Notices of eviction, foreclosure, or repossession of a primary residence</li>
-        <li style={li}>Notices of termination of utility services, or cancellation of health or life insurance benefits</li>
-        <li style={li}>Product recall notices, or documents accompanying the transport of hazardous materials</li>
-        <li style={li}>Transactions governed by the Uniform Commercial Code, other than sections 1-107 and 1-206 and Articles 2 and 2A</li>
+        <li style={li}>The time they consented to sign electronically, with their IP address and browser user-agent</li>
+        <li style={li}>The time they submitted their signature, with their IP address and browser user-agent</li>
+        <li style={li}>Confirmation that they paged through the whole document and affirmed intent to sign</li>
+        <li style={li}>Each time an invitation was sent or resent, and to which address</li>
       </ul>
       <p style={p}>
-        This list is a summary, not legal advice, and requirements vary by state and by transaction. If you are unsure whether your document can be signed electronically, ask a lawyer before you send it.
+        This audit trail is embedded in the Certificate of Completion attached to the final PDF, which means <strong>every party to the document can see it</strong> — including the IP addresses and timestamps of the other signers. That is the point of the record, but it is worth knowing before you sign something.
       </p>
 
-      <h2 style={h2}>7. We do not provide legal advice</h2>
+      <h3 style={h3}>Payment information</h3>
       <p style={p}>
-        We are a software tool. We do not draft, review, interpret, or advise on the content of your documents, and nothing on this site is legal advice. Whether your document is valid, enforceable, or appropriate for your situation is between you and your own attorney.
+        Payments are processed by Stripe on Stripe&apos;s own hosted checkout pages. Your card number never reaches our servers and we cannot see it. We receive a confirmation from Stripe containing a payment identifier and the billing email you gave them.
       </p>
 
-      <h2 style={h2}>8. Electronic signatures and the audit record</h2>
-      <p style={p}>
-        Before signing, each signer is shown a consent disclosure and must affirmatively agree to do business electronically, must page through the entire document, and must affirm their intent to sign. We record each of these steps server-side, along with the time, IP address, and browser user-agent, and include them in the Certificate of Completion attached to the final PDF. Each completed document is fingerprinted with a SHA-256 hash so that any later alteration is detectable.
-      </p>
-      <p style={p}>
-        We provide this record so that you have evidence of how a signature was obtained. We do not guarantee any particular legal outcome, and we do not represent you in a dispute. If a signature is challenged, the Certificate of Completion is available to you as evidence, but the enforceability of your document depends on facts and law outside our control.
-      </p>
-
-      <h2 style={h2}>9. Document retention and availability</h2>
-      <p style={p}>
-        We keep your envelopes and completed documents available on the Service indefinitely, so you can retrieve them later using the original link or the{" "}
-        <a href="/find-my-document" style={link}>find my document</a> page. You may ask us to delete a document at any time by emailing{" "}
-        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a>; deletion is permanent and we cannot recover a deleted document afterward.
-      </p>
-      <p style={p}>
-        We are not a document archive or a system of record. Download and store your own copy of anything you need to keep. We may delete data if we cease operating the Service, and we will make a reasonable effort to give notice by email before doing so.
-      </p>
-
-      <h2 style={h2}>10. Support</h2>
-      <p style={p}>
-        Support is provided by email at <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a>. We aim to respond within two business days. We do not offer phone support or live chat.
-      </p>
-      <p style={p}>We can help you with:</p>
+      <h3 style={h3}>What we do not collect</h3>
       <ul style={ul}>
-        <li style={li}>Problems with the Service itself — uploads, payments, delivery, downloads</li>
-        <li style={li}>Resending a signing invitation, or recovering a lost link</li>
-        <li style={li}>Refunds and billing questions</li>
-        <li style={li}>Deleting your documents</li>
+        <li style={li}>No accounts, no passwords — there is nothing to sign into.</li>
+        <li style={li}>No advertising or analytics trackers, and no third-party cookies set by us.</li>
+        <li style={li}>No cross-site tracking, no data brokers, no profile building.</li>
       </ul>
-      <p style={p}>We cannot help you with:</p>
+
+      <h2 style={h2}>How we use it</h2>
+      <p style={p}>Only to run the Service:</p>
       <ul style={ul}>
-        <li style={li}>What your document should say, or whether it is legally sufficient</li>
-        <li style={li}>Persuading a signer to sign, or contacting a signer on your behalf</li>
-        <li style={li}>Disputes between you and another party to a document</li>
+        <li style={li}>To deliver signing invitations and notifications by email</li>
+        <li style={li}>To display your document to the people you sent it to, and to assemble the final signed PDF</li>
+        <li style={li}>To produce the audit certificate and the SHA-256 fingerprint of the completed document</li>
+        <li style={li}>To take payment and issue refunds</li>
+        <li style={li}>To answer your support emails</li>
+        <li style={li}>To investigate abuse or fraud, and to comply with the law</li>
       </ul>
       <p style={p}>
-        Most common questions are answered on the <a href="/faq" style={link}>FAQ page</a>.
+        We do not sell personal information, and we do not share it for cross-context behavioral advertising. We do not use your documents to train machine-learning models.
       </p>
 
-      <h2 style={h2}>11. Availability</h2>
-      <p style={p}>
-        We do not promise any particular level of uptime. The Service may be unavailable for maintenance, or because of failures at hosting, email, or payment providers we depend on. We are not liable for delays in delivering an envelope or a notification.
-      </p>
-
-      <h2 style={h2}>12. Acceptable use</h2>
-      <p style={p}>You may not use the Service to:</p>
+      <h2 style={h2}>Who else handles your data</h2>
+      <p style={p}>We use a small number of service providers, all located in the United States:</p>
       <ul style={ul}>
-        <li style={li}>Send unsolicited bulk mail, or use signer email addresses for any purpose other than the document at hand</li>
-        <li style={li}>Upload malware, or content that is unlawful, infringing, or sexually exploitative of minors</li>
-        <li style={li}>Attempt to access another person&apos;s envelope, probe the Service for vulnerabilities, or interfere with its operation</li>
-        <li style={li}>Evade the page, signer, or pricing limits by automated means</li>
+        <li style={li}><strong>Railway</strong> — hosting and file storage. Your documents, the page images rendered from them, and the database all live on a private storage volume there.</li>
+        <li style={li}><strong>Stripe</strong> — payment processing. Stripe handles card data under its own privacy policy.</li>
+        <li style={li}><strong>Resend</strong> — transactional email delivery. Resend sends our mail through Amazon SES, so the contents of our notification emails, including signing links, pass through both.</li>
       </ul>
       <p style={p}>
-        We may suspend or terminate access, and cancel an envelope, if we believe in good faith that these terms have been violated. Where we cancel an unused envelope, we refund it.
+        We may also disclose information if we are legally required to, or where we believe in good faith it is necessary to protect someone&apos;s safety or to investigate fraud. If our business is ever sold or transferred, envelope data may transfer with it, subject to this policy.
       </p>
 
-      <h2 style={h2}>13. Disclaimer of warranties</h2>
+      <h2 style={h2}>How documents are protected — and the one thing to know</h2>
       <p style={p}>
-        The Service is provided &quot;as is&quot; and &quot;as available,&quot; without warranties of any kind, whether express or implied, including any implied warranties of merchantability, fitness for a particular purpose, title, or non-infringement. We do not warrant that the Service will be uninterrupted, secure, or error-free, or that any document will be delivered to, opened by, or signed by its intended recipient.
+        Traffic to the site is encrypted with HTTPS. Documents are stored on a private volume that is not publicly browsable, and completed documents are fingerprinted with SHA-256 so tampering is detectable.
+      </p>
+      <p style={p}>
+        <strong>Access is by link.</strong> Envelope and signing URLs contain long random identifiers that cannot practically be guessed, but there is no password on them: anyone who has the link can open that envelope. This is what makes signing work without accounts, and it is the same trade-off most signing services make — but it means you should treat a signing link like the document itself, and avoid forwarding it to people who should not see it.
+      </p>
+      <p style={p}>
+        No system is perfectly secure, and we cannot guarantee that unauthorized access will never occur.
       </p>
 
-      <h2 style={h2}>14. Limitation of liability</h2>
+      <h2 style={h2}>How long we keep it</h2>
       <p style={p}>
-        To the fullest extent permitted by law, our total liability to you for any claim arising out of or relating to the Service is limited to the greater of the amount you paid us for the envelope giving rise to the claim, or $20.
+        We keep envelopes and completed documents indefinitely, so that you can retrieve them later using the original link or the{" "}
+        <a href="/find-my-document" style={link}>find my document</a> page. We would rather you be able to pull up a contract in three years than have it disappear.
       </p>
       <p style={p}>
-        We are not liable for indirect, incidental, special, consequential, exemplary, or punitive damages, or for lost profits, lost business, lost data, or the loss or unenforceability of any agreement, even if we have been advised of the possibility of such damages. Some jurisdictions do not allow certain of these limitations, in which case they apply to the maximum extent permitted.
+        If you would rather it not be kept, email{" "}
+        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> from the address associated with the envelope and we will delete the document — your original file and the page images rendered from it — together with its audit record. Deletion is permanent and cannot be undone, so download your copy first. We will confirm when it is done, normally within a few business days.
       </p>
-
-      <h2 style={h2}>15. Indemnification</h2>
       <p style={p}>
-        You agree to indemnify and hold harmless Live, Love, Learn, Leave a Legacy LLC and its members from any claim, loss, or expense (including reasonable attorneys&apos; fees) arising out of the documents you send, your use of the Service, or your violation of these terms or of any law or third-party right.
-      </p>
-
-      <h2 style={h2}>16. Changes to these terms</h2>
-      <p style={p}>
-        We may update these terms. The &quot;last updated&quot; date at the top reflects the current version. Changes apply to envelopes created after they are posted; the version in effect when you paid governs that envelope.
+        Some records outside the envelope itself — payment records held by Stripe, email delivery logs held by Resend — are retained by those providers under their own schedules and may survive deletion of the document.
       </p>
 
-      <h2 style={h2}>17. Governing law</h2>
+      <h2 style={h2}>Your choices</h2>
+      <ul style={ul}>
+        <li style={li}><strong>Get your documents back.</strong> Use <a href="/find-my-document" style={link}>find my document</a> to have links emailed to the address you used.</li>
+        <li style={li}><strong>Get a copy of your data,</strong> or ask what we hold about you — email support and we will send it.</li>
+        <li style={li}><strong>Delete it.</strong> See above.</li>
+        <li style={li}><strong>Correct it.</strong> Names and email addresses on a sent envelope cannot be edited, because the audit record has to stay accurate. If something is wrong, ask us to delete the envelope and send a new one.</li>
+      </ul>
       <p style={p}>
-        These terms are governed by the laws of the State of Wyoming, without regard to its conflict-of-laws rules. Any dispute will be brought exclusively in the state or federal courts located in Wyoming, and you consent to personal jurisdiction there.
+        Depending on where you live — California, Colorado, Connecticut, Virginia, and a growing number of other states, or the EEA and UK — you may have statutory rights to access, delete, correct, or port your personal information, and to be free from discrimination for exercising them. We honor these requests from everyone, regardless of where you live. Email support to make one. If you are unsatisfied with our response, you may have a right to appeal or to complain to your state attorney general or data protection authority.
       </p>
 
-      <h2 style={h2}>18. Contact</h2>
+      <h2 style={h2}>Signers, as distinct from senders</h2>
+      <p style={p}>
+        If you received a document to sign, the sender chose to send it to you; we did not obtain your address from anywhere else. You can decline to sign simply by not signing. If you believe you received a document in error or do not want your information retained, email{" "}
+        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> and we will look into it. Note that an envelope you have already signed belongs to the other parties too, and we will weigh their interest in keeping the record before deleting it.
+      </p>
+
+      <h2 style={h2}>Children</h2>
+      <p style={p}>
+        The Service is not directed to children and is not intended for anyone under 18. We do not knowingly collect information from children. If you believe a child has used the Service, email us and we will delete the data.
+      </p>
+
+      <h2 style={h2}>Changes to this policy</h2>
+      <p style={p}>
+        We may update this policy. The &quot;last updated&quot; date at the top reflects the current version. If a change materially reduces the protection of information we already hold, we will make a reasonable effort to notify affected senders by email.
+      </p>
+
+      <h2 style={h2}>Contact</h2>
       <p style={p}>
         Live, Love, Learn, Leave a Legacy LLC<br />
         <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a>
