@@ -1,8 +1,63 @@
 import LegalPage, { h2, h3, p, link, callout } from "@/components/LegalPage";
 
 export const metadata = {
-  title: "FAQ & Support — DollarSign.io",
-  description: "Answers to the most common questions about sending, signing, and downloading documents on DollarSign.io.",
+  title: "FAQ — Electronic Signature Questions",
+  description:
+    "What it costs, whether an electronic signature is legally binding, what to do when a signer never got the email, and how refunds work — answered plainly.",
+  alternates: { canonical: "/faq" },
+  openGraph: {
+    title: "FAQ & Support — DollarSign.io",
+    description: "Straight answers about cost, legality, delivery problems, and refunds.",
+    url: "/faq",
+  },
+};
+
+// FAQPage structured data. Only a subset of the page — the questions
+// people actually search for as questions — and each answer is the
+// visible text with the links stripped, which is what Google requires:
+// markup that doesn't appear on the page is a manual-action risk.
+// If an answer below is edited, edit it in both places.
+const faqLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      q: "What does it cost?",
+      a: "$1.99 per envelope. Flat — one price whether it's a one-page form with one signer or a hundred-page contract with ten. No subscription, no per-signature fees, no account required. The limits are 10 signers and 100 pages per envelope.",
+    },
+    {
+      q: "Are electronic signatures valid?",
+      a: "In the United States, electronic signatures have the same legal effect as handwritten ones under the federal ESIGN Act of 2000 and, in nearly every state, the Uniform Electronic Transactions Act. We enforce the requirements those laws impose: each signer must separately consent to sign electronically, must be able to review the whole document, and must affirm their intent to sign. All three steps are recorded server-side. We're a software company, not a law firm, and this isn't legal advice.",
+    },
+    {
+      q: "Do I need an account to sign?",
+      a: "No. Click the link in your email, review the document, and sign. There is nothing to install and nothing to sign up for.",
+    },
+    {
+      q: "What's the Certificate of Completion?",
+      a: "The last page of your signed PDF. It records, for every signer, when they consented, when they signed, the IP address and browser they used, and a SHA-256 fingerprint of the finished document. If a signature is ever questioned, that page is your evidence — and the fingerprint means anyone can verify the document hasn't been altered since.",
+    },
+    {
+      q: "Can I get a refund?",
+      a: "Yes, for any reason. Email support@dollarsign.io and we'll refund you — we don't ask why. Please email us rather than disputing the charge with your bank; a refund takes us a minute and a dispute takes you weeks.",
+    },
+    {
+      q: "My signer never got the email. Where should they look first?",
+      a: "The spam or junk folder, every time. This is the single most common issue, and the email is in there the large majority of the time. Ask them to search their whole mailbox for dollarsign.io rather than scrolling the inbox — filtered mail often skips the inbox entirely.",
+    },
+    {
+      q: "Are there documents I shouldn't use this for?",
+      a: "Yes — wills, anything requiring notarization or a witness, court filings, most family-law matters, and several kinds of statutory notice are excluded from electronic signature by law. The full list is in section 6 of the Terms. If you're unsure, ask a lawyer before sending.",
+    },
+    {
+      q: "What file types can I upload?",
+      a: "PDFs and images (PNG, JPG). PDFs are rendered page by page in your browser as you upload them, so a long document takes a moment.",
+    },
+  ].map(({ q, a }) => ({
+    "@type": "Question",
+    name: q,
+    acceptedAnswer: { "@type": "Answer", text: a },
+  })),
 };
 
 function Q({ q, children }) {
@@ -16,6 +71,11 @@ function Q({ q, children }) {
 
 export default function FaqPage() {
   return (
+    <>
+    <script
+      type="application/ld+json"
+      dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }}
+    />
     <LegalPage
       title="FAQ & Support"
       intro="Most questions are answered here. If yours isn't, email support@dollarsign.io and we'll get back to you within two business days."
@@ -200,5 +260,6 @@ export default function FaqPage() {
         We reply within two business days. Support is by email only; we don&apos;t offer phone support or live chat.
       </div>
     </LegalPage>
+    </>
   );
 }
