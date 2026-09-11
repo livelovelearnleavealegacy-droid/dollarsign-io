@@ -38,7 +38,7 @@ export default function GuidesPage() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           {GUIDES.map((g) => (
             <div key={g.slug} style={{ padding: "18px 0", borderBottom: "1px solid var(--line)" }}>
-              
+             <a
                 href={guideUrl(g.slug)}
                 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 18, lineHeight: 1.35, color: "var(--ink)", textDecoration: "none" }}
               >
