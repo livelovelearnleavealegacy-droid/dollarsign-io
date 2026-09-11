@@ -398,7 +398,7 @@ export default function Home() {
                 { icon: <PenTool size={16} />, t: "Draw or Type", d: "Each person receives their own link to sign or type their name." },
                 { icon: <Download size={16} />, t: "Yours to Keep", d: "Final document delivered to all signers by email. Documents recoverable indefinitely." },
                 { icon: <Users size={16} />, t: "PCI Compliant", d: `Credit card processing done by Stripe. We never see your credit card information.` },
-                { icon: <Search size={16} />, t: "Still a Real Document", d: "We sign your original PDF instead of a picture of it, so the finished file stays searchable, selectable, and small." },
+                { icon: <Search size={16} />, t: "Still a Real Document", d: "We stamp signatures onto your original PDF instead of flattening it into pictures, so the signed file keeps whatever text and quality your original had." },
                 { icon: <Clock size={16} />, t: "Keeps Things Moving", d: "Automatic reminders, an optional expiry date, and signing either in order or all at once — your choice." },
               ].map((c, i) => (
                 <div key={i} style={{ background: "var(--card)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 16 }}>
