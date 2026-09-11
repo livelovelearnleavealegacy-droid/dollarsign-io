@@ -12,7 +12,7 @@ export default function PrivacyPage() {
   return (
     <LegalPage
       title="Privacy Policy"
-      updated="September 8, 2026"
+      updated="September 11, 2026"
       intro="This explains what DollarSign.io collects, why we collect it, who else touches it, and how to get it deleted."
     >
       <div style={callout}>
@@ -26,7 +26,7 @@ export default function PrivacyPage() {
       <ul style={ul}>
         <li style={li}><strong>Your name and email address</strong> as the sender of an envelope.</li>
         <li style={li}><strong>Each signer&apos;s name and email address,</strong> as entered by the sender.</li>
-        <li style={li}><strong>Your document.</strong> When you upload a file, it is converted in your browser into page images, which are then uploaded and stored on our server. Whatever your document contains, we store.</li>
+        <li style={li}><strong>Your document.</strong> When you upload a PDF, the original file is uploaded and stored on our server. Your browser also renders each page to an image, and those images are stored as well. If you upload an image file instead, that file is what we store. Whatever your document contains, we store.</li>
         <li style={li}><strong>Field values entered by signers</strong> — drawn or typed signatures, dates, and text.</li>
       </ul>
 
@@ -73,7 +73,7 @@ export default function PrivacyPage() {
       <h2 style={h2}>Who else handles your data</h2>
       <p style={p}>We use a small number of service providers, all located in the United States:</p>
       <ul style={ul}>
-        <li style={li}><strong>Railway</strong> — hosting and file storage. Your document images and the database live on a private storage volume there.</li>
+        <li style={li}><strong>Railway</strong> — hosting and file storage. Your documents, the page images rendered from them, and the database all live on a private storage volume there.</li>
         <li style={li}><strong>Stripe</strong> — payment processing. Stripe handles card data under its own privacy policy.</li>
         <li style={li}><strong>Resend</strong> — transactional email delivery. Resend sends our mail through Amazon SES, so the contents of our notification emails, including signing links, pass through both.</li>
       </ul>
@@ -99,7 +99,7 @@ export default function PrivacyPage() {
       </p>
       <p style={p}>
         If you would rather it not be kept, email{" "}
-        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> from the address associated with the envelope and we will delete the document, its page images, and its audit record. Deletion is permanent and cannot be undone, so download your copy first. We will confirm when it is done, normally within a few business days.
+        <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> from the address associated with the envelope and we will delete the document — your original file and the page images rendered from it — together with its audit record. Deletion is permanent and cannot be undone, so download your copy first. We will confirm when it is done, normally within a few business days.
       </p>
       <p style={p}>
         Some records outside the envelope itself — payment records held by Stripe, email delivery logs held by Resend — are retained by those providers under their own schedules and may survive deletion of the document.
