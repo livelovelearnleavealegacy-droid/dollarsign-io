@@ -1,0 +1,58 @@
+name: Daily digest
+
+# The other watchers here only speak when something breaks. This one
+# reports every morning whether or not anything happened, so there is a
+# regular picture of the business rather than only an alarm.
+#
+# The endpoint composes and sends the mail; this workflow is just the
+# clock, exactly like reminders.yml.
+#
+# Requires:
+#   Secret   CRON_TOKEN  — must match CRON_TOKEN in Railway
+#   Variable APP_URL     — optional; defaults to the Railway URL below
+#   Variable DIGEST_TO   — optional, set in RAILWAY (not here); defaults
+#                          to support@dollarsign.io
+
+on:
+  schedule:
+    # 13:00 UTC — early morning in the US, so the day's report is already
+    # waiting. Deliberately an hour before the 14:00 reminders run, so a
+    # digest describes the state before that job changes anything.
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+jobs:
+  digest:
+    name: Send the daily digest
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Call the digest endpoint
+        env:
+          APP_URL: ${{ vars.APP_URL || 'https://dollarsign-io-production.up.railway.app' }}
+          CRON_TOKEN: ${{ secrets.CRON_TOKEN }}
+        run: |
+          if [ -z "$CRON_TOKEN" ]; then
+            echo "CRON_TOKEN secret is not set — add it in Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+          # Header, never the query string: tokens in URLs end up in logs.
+          code=$(curl -sS -o response.json -w "%{http_code}" \
+            "$APP_URL/api/cron/digest" \
+            -H "x-cron-token: $CRON_TOKEN")
+          echo "HTTP $code"
+          cat response.json
+          echo
+          if [ "$code" = "404" ]; then
+            echo "404 means CRON_TOKEN is unset or mismatched on the server."
+            exit 1
+          fi
+          [ "$code" = "200" ] || exit 1
+          # The endpoint returns ok:true even when the mail fails, so that
+          # a broken mailer still leaves the numbers in this log. Fail the
+          # job in that case, because a digest nobody receives is not a
+          # digest — and a red run here is itself the alarm.
+          if grep -q '"delivered":false' response.json; then
+            echo "The digest was composed but NOT delivered — see the error field above."
+            exit 1
+          fi
