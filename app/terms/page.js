@@ -1,4 +1,5 @@
 import LegalPage, { h2, p, ul, li, link, callout } from "@/components/LegalPage";
+import { PRICE_LABEL, MAX_SIGNERS, MAX_PAGES } from "@/lib/shared";
 
 export const metadata = {
   title: "Terms of Service",
@@ -16,7 +17,7 @@ export default function TermsPage() {
       intro="These terms are a contract between you and Live, Love, Learn, Leave a Legacy LLC. Please read them before you send a document for signature."
     >
       <div style={callout}>
-        <strong>The short version.</strong> You pay $1.99 per envelope. We deliver it, collect signatures, and give you a signed PDF with an audit certificate. If something goes wrong, email{" "}
+        <strong>The short version.</strong> You pay $1.00 per envelope. We deliver it, collect signatures, and give you a signed PDF with an audit certificate. If something goes wrong, email{" "}
         <a href="mailto:support@dollarsign.io" style={link}>support@dollarsign.io</a> and we will refund you, no questions asked. We are a tool, not a law firm, and there are some documents you should not sign electronically at all — those are listed below.
       </div>
 
@@ -38,7 +39,7 @@ export default function TermsPage() {
 
       <h2 style={h2}>3. Pricing and payment</h2>
       <ul style={ul}>
-        <li style={li}>Each envelope costs a flat $1.99, regardless of how many pages or signers it contains.</li>
+        <li style={li}>Each envelope costs a flat {PRICE_LABEL}, regardless of how many pages or signers it contains.</li>
         <li style={li}>An envelope may contain up to 10 signers and up to 100 pages. These limits are enforced when the envelope is created.</li>
         <li style={li}>Payment is collected through Stripe before the envelope is sent. We never see or store your full card number.</li>
         <li style={li}>Prices may change, but a change never affects an envelope you have already paid for.</li>
