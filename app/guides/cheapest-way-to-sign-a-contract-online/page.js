@@ -1,4 +1,4 @@
-import GuidePage, { h2, h3, p, ul, li, link, callout, Table, Source, Cta, Related } from "@/components/GuidePage";
+import GuidePage, { h2, h3, p, ul, li, link, callout, Table, Source, Cta, Related, PRICE_LABEL, MAX_SIGNERS, MAX_PAGES, forN } from "@/components/GuidePage";
 
 export const metadata = {
   title: "Cheapest Way to Get a Contract Signed Online",
@@ -19,14 +19,15 @@ export default function Page() {
       slug="cheapest-way-to-sign-a-contract-online"
       title="The cheapest way to get a contract signed online"
       description={metadata.description}
-      updated="September 11, 2026"
+      updated="September 12, 2026"
       published="2026-09-11"
       intro="There is no single cheapest option — there is a volume at which the answer changes. Work out roughly how many documents you send in a year and the rest is arithmetic."
     >
       <div style={callout}>
-        <strong>The short version.</strong> Under roughly ten documents a month, paying per document wins on price and
-        it is not close — and against DocuSign&apos;s capped plans it keeps winning well past that. Above ten a month you
-        are usually buying workflow features rather than cheaper signatures, and should choose on those.
+        <strong>The short version.</strong> Under roughly twenty documents a month, paying per document wins on price
+        and it is not close — and against DocuSign&apos;s capped plans it keeps winning well past that. Above twenty a
+        month an unlimited subscription starts to cost less, and you are usually buying workflow features by then
+        anyway.
       </div>
 
       <h2 style={h2}>Start with the annual number</h2>
@@ -38,15 +39,15 @@ export default function Page() {
 
       <h2 style={h2}>What a year costs, by volume</h2>
       <Table
-        head={["Per year", "DocuSign Personal", "DocuSign Standard", "Adobe Acrobat Pro", "$1.00 per envelope"]}
+        head={["Per year", "DocuSign Personal", "DocuSign Standard", "Adobe Acrobat Pro", `${PRICE_LABEL} per envelope`]}
         rows={[
-          ["1", "$132", "$360", "$239.88", "$1.00"],
-          ["6", "$132", "$360", "$239.88", "$6.00"],
-          ["12", "$132", "$360", "$239.88", "$12.00"],
-          ["24", "$132", "$360", "$239.88", "$24.00"],
-          ["60", "$132 (at the cap)", "$360", "$239.88", "$60.00"],
-          ["100", "not possible", "$360 (at the cap)", "$239.88", "$100.00"],
-          ["250", "not possible", "$1,080 (3 seats)", "$239.88", "$250.00"],
+          ["1", "$132", "$360", "$239.88", forN(1)],
+          ["6", "$132", "$360", "$239.88", forN(6)],
+          ["12", "$132", "$360", "$239.88", forN(12)],
+          ["24", "$132", "$360", "$239.88", forN(24)],
+          ["60", "$132 (at the cap)", "$360", "$239.88", forN(60)],
+          ["100", "not possible", "$360 (at the cap)", "$239.88", forN(100)],
+          ["250", "not possible", "$1,080 (3 seats)", "$239.88", forN(250)],
         ]}
         note="Annual-commitment pricing. DocuSign Personal allows 5 envelopes a month; Standard allows 100 per user per year, so higher volumes need more seats."
       />
@@ -60,22 +61,26 @@ export default function Page() {
 
       <h2 style={h2}>Where the lines actually cross</h2>
       <p style={p}>
-        Against DocuSign Personal at $132 a year, per-envelope pricing stays cheaper until roughly <strong>66
-        documents</strong> — but the plan only permits 60, so in practice per-document is cheaper at every volume
-        Personal allows. Against Adobe Acrobat Pro at $239.88, the crossover is around <strong>120 documents</strong> a
-        year, or about ten a month.
+        Against DocuSign Personal at $132 a year, per-envelope pricing stays cheaper until <strong>132 documents</strong> —
+        but the plan only permits 60, so per-document is cheaper at every volume Personal allows, and by a wide margin.
+        At its own ceiling Personal works out to $2.20 a document; this is {PRICE_LABEL}.
       </p>
       <p style={p}>
-        Against DocuSign the crossover is further out than you would expect, and the reason is the envelope caps. Past
-        100 documents a year you are buying additional seats at $360 each, so at 250 documents DocuSign Standard costs
-        $1,080 against $497.50 per-envelope. Capped subscriptions stop behaving like bulk discounts once you exceed the
-        cap.
+        Against DocuSign Standard the caps do the work. Past 100 documents a year you are buying additional seats at
+        $360 each, so at 250 documents Standard costs $1,080 against {forN(250)} per-envelope. Capped subscriptions stop
+        behaving like bulk discounts the moment you exceed the cap.
       </p>
       <p style={p}>
-        So the honest rule of thumb: <strong>against an uncapped subscription, roughly ten documents a month is where
-        it starts winning on price.</strong> Against a capped one, per-document can stay cheaper well beyond that — but
-        by then you almost certainly want templates and a dashboard, and you should buy those on purpose rather than
-        squeeze another year out of the cheapest line item.
+        <strong>Adobe Acrobat Pro is the one that eventually wins.</strong> At $239.88 a year with no signature limit
+        stated on its pricing page, the crossover is around <strong>240 documents</strong> a year — about twenty a
+        month. Below that, per-document is cheaper. Above it, Adobe is, and we would rather say so than pretend
+        otherwise.
+      </p>
+      <p style={p}>
+        So the honest rule of thumb: <strong>roughly twenty documents a month is where an uncapped subscription starts
+        winning on price.</strong> Against a capped one, per-document stays cheaper much further out. Either way, once
+        you are sending that often you want templates and a dashboard — buy those deliberately rather than squeezing
+        another year out of the cheapest line item.
       </p>
 
       <h2 style={h2}>The free options, and what they cost you</h2>
@@ -120,8 +125,8 @@ export default function Page() {
       </ul>
 
       <Cta>
-        <strong>If you are at the low-volume end.</strong> DollarSign.io is $1.00 per envelope, flat — up to 10 signers
-        and 100 pages, no account, no subscription. Every completed document comes with a Certificate of Completion and
+        <strong>If you are at the low-volume end.</strong> DollarSign.io is {PRICE_LABEL} per envelope, flat — up to {MAX_SIGNERS} signers
+        and {MAX_PAGES} pages, no account, no subscription. Every completed document comes with a Certificate of Completion and
         a SHA-256 fingerprint, and stays retrievable indefinitely.{" "}
         <a href="/" style={link}>Upload a document</a> to see the whole thing before paying.
       </Cta>
