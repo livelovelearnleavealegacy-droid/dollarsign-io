@@ -59,11 +59,11 @@ export default function Page() {
       <Table
         head={["Documents you send in a year", "DocuSign Personal ($132/yr)", "Pay-per-envelope at $1.99"]}
         rows={[
-          ["1", "$132.00 each", "$1.99 total"],
-          ["5", "$26.40 each", "$9.95 total"],
-          ["12", "$11.00 each", "$23.88 total"],
-          ["30", "$4.40 each", "$59.70 total"],
-          ["60 (the plan's ceiling)", "$2.20 each", "$119.40 total"],
+          ["1", "$132.00 each", "$1.00 total"],
+          ["5", "$26.40 each", "$5.00 total"],
+          ["12", "$11.00 each", "$12.00 total"],
+          ["30", "$4.40 each", "$30.00 total"],
+          ["60 (the plan's ceiling)", "$2.20 each", "$60.00 total"],
         ]}
         note="Personal allows 5 envelopes a month, so 60 a year is the most the plan permits."
       />
