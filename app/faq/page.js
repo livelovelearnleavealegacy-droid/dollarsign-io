@@ -36,7 +36,7 @@ const faqLd = {
   mainEntity: [
     {
       q: "What does it cost?",
-      a: "$1.99 per envelope. Flat — one price whether it's a one-page form with one signer or a hundred-page contract with ten. No subscription, no per-signature fees, no account required. The limits are 10 signers and 100 pages per envelope.",
+      a: COST_ANSWER,
     },
     {
       q: "Are electronic signatures valid?",
@@ -146,9 +146,9 @@ export default function FaqPage() {
       <h2 style={h2}>Payment</h2>
 
       <Q q="What does it cost?">
-        <p style={p}>
-          $1.99 per envelope. Flat — one price whether it&apos;s a one-page form with one signer or a hundred-page contract with ten. No subscription, no per-signature fees, no account required. The limits are 10 signers and 100 pages per envelope.
-        </p>
+       
+      <p style={p}>{COST_ANSWER}</p>
+ 
       </Q>
 
       <Q q="I paid but nothing was sent">
