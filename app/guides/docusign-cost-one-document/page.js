@@ -1,4 +1,4 @@
-import GuidePage, { h2, p, ul, li, link, callout, Table, Source, Cta, Related } from "@/components/GuidePage";
+import GuidePage, { h2, p, ul, li, link, callout, Table, Source, Cta, Related, PRICE_LABEL, PRICE_SHORT, MAX_SIGNERS, MAX_PAGES, forN } from "@/components/GuidePage";
 
 export const metadata = {
   title: "What Does DocuSign Cost for One Document?",
@@ -19,7 +19,7 @@ export default function Page() {
       slug="docusign-cost-one-document"
       title="What does DocuSign cost for one document?"
       description={metadata.description}
-      updated="September 11, 2026"
+      updated="September 12, 2026"
       published="2026-09-11"
       intro="If you need one signature on one document, the honest answer is that DocuSign does not sell that. It sells subscriptions, and the smallest one is an annual commitment."
     >
@@ -57,20 +57,21 @@ export default function Page() {
       </p>
 
       <Table
-        head={["Documents you send in a year", "DocuSign Personal ($132/yr)", "Pay-per-envelope at $1.00"]}
+        head={["Documents you send in a year", "DocuSign Personal ($132/yr)", `Pay-per-envelope at ${PRICE_LABEL}`]}
         rows={[
-          ["1", "$132.00 each", "$1.00 total"],
-          ["5", "$26.40 each", "$5.00 total"],
-          ["12", "$11.00 each", "$12.00 total"],
-          ["30", "$4.40 each", "$30.00 total"],
-          ["60 (the plan's ceiling)", "$2.20 each", "$60.00 total"],
+          ["1", "$132.00 each", `${forN(1)} total`],
+          ["5", "$26.40 each", `${forN(5)} total`],
+          ["12", "$11.00 each", `${forN(12)} total`],
+          ["30", "$4.40 each", `${forN(30)} total`],
+          ["60 (the plan's ceiling)", "$2.20 each", `${forN(60)} total`],
         ]}
         note="Personal allows 5 envelopes a month, so 60 a year is the most the plan permits."
       />
 
       <p style={p}>
         The plan never gets cheaper per document than <strong>$2.20</strong>, because it runs out of envelopes before it
-        runs out of year. That is the part most comparisons miss: the cap, not the price, sets the floor.
+        runs out of year. That is the part most comparisons miss: the cap, not the price, sets the floor — and that
+        floor is more than twice {PRICE_LABEL}.
       </p>
 
       <h2 style={h2}>The two things worth reading twice</h2>
@@ -115,8 +116,8 @@ export default function Page() {
       </p>
 
       <Cta>
-        <strong>If you just need this one signed.</strong> DollarSign.io is $1.00 per envelope — up to 10 signers and
-        100 pages, no account, no subscription, nothing to cancel. Everyone gets the signed PDF with a Certificate of
+        <strong>If you just need this one signed.</strong> DollarSign.io is {PRICE_LABEL} per envelope — up to {MAX_SIGNERS} signers
+        and {MAX_PAGES} pages, no account, no subscription, nothing to cancel. Everyone gets the signed PDF with a Certificate of
         Completion. <a href="/" style={link}>Upload your document</a> and see the whole thing before you pay.
       </Cta>
 
