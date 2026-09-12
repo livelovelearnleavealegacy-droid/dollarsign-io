@@ -38,7 +38,7 @@ export default function Page() {
 
       <h2 style={h2}>What a year costs, by volume</h2>
       <Table
-        head={["Per year", "DocuSign Personal", "DocuSign Standard", "Adobe Acrobat Pro", "$1.99 per envelope"]}
+        head={["Per year", "DocuSign Personal", "DocuSign Standard", "Adobe Acrobat Pro", "$1.00 per envelope"]}
         rows={[
           ["1", "$132", "$360", "$239.88", "$1.00"],
           ["6", "$132", "$360", "$239.88", "$6.00"],
@@ -120,7 +120,7 @@ export default function Page() {
       </ul>
 
       <Cta>
-        <strong>If you are at the low-volume end.</strong> DollarSign.io is $1.99 per envelope, flat — up to 10 signers
+        <strong>If you are at the low-volume end.</strong> DollarSign.io is $1.00 per envelope, flat — up to 10 signers
         and 100 pages, no account, no subscription. Every completed document comes with a Certificate of Completion and
         a SHA-256 fingerprint, and stays retrievable indefinitely.{" "}
         <a href="/" style={link}>Upload a document</a> to see the whole thing before paying.
