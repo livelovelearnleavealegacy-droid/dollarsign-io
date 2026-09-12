@@ -1,5 +1,6 @@
 import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
+import { PRICE_LABEL, PRICE_SHORT, MAX_SIGNERS, MAX_PAGES } from "@/lib/shared";
 
 const BASE = process.env.APP_URL || "https://dollarsign.io";
 
@@ -15,11 +16,11 @@ export const metadata = {
   // search go first — "DollarSign.io" means nothing to someone who has
   // never heard of it, but "electronic signature" is what they type.
   title: {
-    default: "Electronic Signatures for $1.99 — No Account, No Subscription",
+    default: `Electronic Signatures for ${PRICE_SHORT} — No Account, No Subscription`,
     template: "%s | DollarSign.io",
   },
   description:
-    "Sign documents online for a flat $1.99 per envelope. No subscription, no account. Up to 10 signers and 100 pages, ESIGN compliant, certificate included.",
+    `Sign documents online for a flat ${PRICE_LABEL} per envelope. No subscription, no account. Up to ${MAX_SIGNERS} signers and ${MAX_PAGES} pages, ESIGN compliant, certificate included.`,
 
   // Only meaningful because every public page overrides it with its
   // own. The private pages inherit it, which is harmless: they are
@@ -31,14 +32,14 @@ export const metadata = {
     type: "website",
     locale: "en_US",
     url: "/",
-    title: "Sign documents online for $1.99 an envelope",
+    title: `Sign documents online for ${PRICE_SHORT} an envelope`,
     description:
-      "No subscription. No account. Up to 10 signers and 100 pages, with a signed PDF and certificate of completion.",
-    images: [{ url: "/og.png", width: 1200, height: 630, alt: "DollarSign.io — sign documents online for $1.99 an envelope" }],
+      `No subscription. No account. Up to ${MAX_SIGNERS} signers and ${MAX_PAGES} pages, with a signed PDF and certificate of completion.`,
+    images: [{ url: "/og.png", width: 1200, height: 630, alt: `DollarSign.io — sign documents online for ${PRICE_SHORT} an envelope` }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sign documents online for $1.99 an envelope",
+    title: `Sign documents online for ${PRICE_SHORT} an envelope`,
     description: "No subscription. No account. Pay per document.",
     images: ["/og.png"],
   },
