@@ -9,7 +9,7 @@ import FieldTag from "@/components/FieldTag";
 import {
   FLAT_PRICE, MAX_SIGNERS, MAX_PAGES, SIGNER_COLORS, calcPrice, uid,
   FIELD_KINDS, FIELD_LABELS, EXPIRY_CHOICES, DEFAULT_EXPIRY_DAYS, DEFAULT_SIGNING_MODE,
-  primaryBtn, iconBtn, chipBtn, inputStyle,
+  primaryBtn, iconBtn, chipBtn, inputStyle, PRICE_LABEL, PRICE_SHORT,
 } from "@/lib/shared";
 
 // Drawn inline rather than imported so the spinner can't depend on a
@@ -35,7 +35,7 @@ function Hourglass({ size = 22, color = "#8A8F98" }) {
 const LARGE_UPLOAD_BYTES = 4 * 1024 * 1024;
 
 // Homepage structured data. The Offer is the point: it lets a search
-// result carry "$1.99" next to the link, which is the single most
+// result carry the price next to the link, which is the single most
 // persuasive thing about this product and the thing competitors can't
 // match. Rendered on the landing view only — the editor isn't a
 // product page.
@@ -48,7 +48,7 @@ const productLd = {
   operatingSystem: "Any (web-based)",
   url: "https://dollarsign.io",
   description:
-    "Send a document for electronic signature for a flat $1.99. No subscription, no account, up to 10 signers and 100 pages, with a signed PDF and certificate of completion.",
+  `Send a document for electronic signature for a flat ${PRICE_LABEL}. No subscription, no account, up to ${MAX_SIGNERS} signers and ${MAX_PAGES} pages, with a signed PDF and certificate of completion.`,
   offers: {
     "@type": "Offer",
     price: String(FLAT_PRICE.toFixed(2)),
@@ -364,7 +364,7 @@ export default function Home() {
                   for. The old slogan still leads the paragraph below —
                   it just isn't carrying the search load any more. */}
               <h1 style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: "clamp(28px,5.4vw,42px)", lineHeight: 1.14, margin: "0 0 18px", color: "var(--ink)" }}>
-                Sign documents online for ${FLAT_PRICE.toFixed(2)}
+                Sign documents online for {PRICE_SHORT}
                 <br />— no subscription, no account
               </h1>
               <p style={{ fontSize: 17, color: "#5B5F6B", maxWidth: 520, lineHeight: 1.55, margin: "0 auto 32px" }}>
