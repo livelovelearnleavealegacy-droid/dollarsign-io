@@ -111,7 +111,7 @@ export default function Page() {
 
       <h2 style={h2}>Does the price of the service change any of this?</h2>
       <p style={p}>
-        No. Nothing in ESIGN or UETA refers to what you paid. A signature collected through a $1.99 envelope that
+        No. Nothing in ESIGN or UETA refers to what you paid. A signature collected through a $1.00 envelope that
         records consent, review, intent and a fingerprint is not weaker than one collected through a $540-a-year seat
         that records the same things. What higher tiers buy is workflow — templates, integrations, bulk sending — and
         in some cases stronger identity verification, which is a genuine difference for high-value transactions where
@@ -131,7 +131,7 @@ export default function Page() {
       </ul>
 
       <Cta>
-        <strong>See the certificate before you commit to anything.</strong> DollarSign.io is $1.99 an envelope with no
+        <strong>See the certificate before you commit to anything.</strong> DollarSign.io is $1.00 an envelope with no
         account and no subscription, and every completed document carries the full audit record described above.{" "}
         <a href="/" style={link}>Upload a document</a>, or read the{" "}
         <a href="/faq" style={link}>FAQ</a> first.
