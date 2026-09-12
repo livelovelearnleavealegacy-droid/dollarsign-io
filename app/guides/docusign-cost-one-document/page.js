@@ -57,7 +57,7 @@ export default function Page() {
       </p>
 
       <Table
-        head={["Documents you send in a year", "DocuSign Personal ($132/yr)", "Pay-per-envelope at $1.99"]}
+        head={["Documents you send in a year", "DocuSign Personal ($132/yr)", "Pay-per-envelope at $1.00"]}
         rows={[
           ["1", "$132.00 each", "$1.00 total"],
           ["5", "$26.40 each", "$5.00 total"],
@@ -115,7 +115,7 @@ export default function Page() {
       </p>
 
       <Cta>
-        <strong>If you just need this one signed.</strong> DollarSign.io is $1.99 per envelope — up to 10 signers and
+        <strong>If you just need this one signed.</strong> DollarSign.io is $1.00 per envelope — up to 10 signers and
         100 pages, no account, no subscription, nothing to cancel. Everyone gets the signed PDF with a Certificate of
         Completion. <a href="/" style={link}>Upload your document</a> and see the whole thing before you pay.
       </Cta>
