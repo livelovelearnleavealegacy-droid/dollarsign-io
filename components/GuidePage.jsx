@@ -1,5 +1,6 @@
 import LegalPage, { h2, h3, p, ul, li, link, callout } from "@/components/LegalPage";
 import { GUIDES, guideUrl } from "@/lib/guides";
+import { FLAT_PRICE, PRICE_LABEL, PRICE_SHORT, MAX_SIGNERS, MAX_PAGES } from "@/lib/shared";
 
 // Guides reuse the policy pages' shell so the reading column, type scale
 // and link styling can't drift. Everything here is the extra furniture a
@@ -10,6 +11,14 @@ import { GUIDES, guideUrl } from "@/lib/guides";
 export { h2, h3, p, ul, li, link, callout };
 
 export { GUIDES, guideUrl } from "@/lib/guides";
+
+// Guides quote the price constantly. Re-exported here so no guide ever
+// types a dollar figure, and `money(n)` renders a row of the break-even
+// tables from the live price rather than from arithmetic done by hand —
+// which is exactly what went wrong the last time a number changed.
+export { FLAT_PRICE, PRICE_LABEL, PRICE_SHORT, MAX_SIGNERS, MAX_PAGES } from "@/lib/shared";
+export const money = (n) => `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+export const forN = (n) => money(n * FLAT_PRICE);
 
 // Prices quoted on these pages are somebody else's and can change without
 // notice. Every one carries the date it was read and a link to the page it
