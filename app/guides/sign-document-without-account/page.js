@@ -107,7 +107,7 @@ export default function Page() {
       </p>
 
       <Cta>
-        <strong>No account, either direction.</strong> DollarSign.io is $1.99 per envelope. You do not register to send,
+        <strong>No account, either direction.</strong> DollarSign.io is $1.00 per envelope. You do not register to send,
         your signers do not register to sign, and there is nothing to cancel afterwards.{" "}
         <a href="/" style={link}>Upload a document</a> and build the whole envelope before paying.
       </Cta>
