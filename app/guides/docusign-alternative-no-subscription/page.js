@@ -56,7 +56,7 @@ export default function Page() {
           ["DocuSign Standard", "$30/user/month · $360/user/year", "up to 50 users · 100 envelopes/user/year"],
           ["DocuSign Business Pro", "$45/user/month · $540/user/year", "up to 50 users · 100 envelopes/user/year"],
           ["Adobe Acrobat Pro", "$19.99/month on annual · $239.88/year · $29.99 month-to-month", "e-signature included; no limit stated on the pricing page"],
-          ["DollarSign.io", "$1.99 per envelope", "10 signers · 100 pages per envelope · no account"],
+          ["DollarSign.io", "$1.00 per envelope", "10 signers · 100 pages per envelope · no account"],
         ]}
         note="Competitor figures read from each company's own pricing page in September 2026."
       />
@@ -84,7 +84,7 @@ export default function Page() {
       <p style={p}>
         The legal substance, which does not come from the price tier. Under the ESIGN Act an electronic signature is
         valid when the signer consented to sign electronically, had a real opportunity to review what they were
-        signing, and demonstrated intent to sign — and when the record can be retained and reproduced. A $1.99 envelope
+        signing, and demonstrated intent to sign — and when the record can be retained and reproduced. A $1.00 envelope
         that does those four things is not a weaker signature than a $540 one.{" "}
         <a href="/guides/electronic-signature-legally-binding" style={link}>The requirements are here in full</a>.
       </p>
@@ -117,7 +117,7 @@ export default function Page() {
       </div>
 
       <Cta>
-        <strong>If per-document is the right shape for you.</strong> DollarSign.io is $1.99 an envelope — up to 10
+        <strong>If per-document is the right shape for you.</strong> DollarSign.io is $1.00 an envelope — up to 10
         signers and 100 pages, no account to create, nothing to cancel, and a full audit certificate on every completed
         document. <a href="/" style={link}>Upload a document</a> and build the whole thing before paying anything.
       </Cta>
