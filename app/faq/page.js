@@ -1,5 +1,18 @@
 import LegalPage, { h2, h3, p, link, callout } from "@/components/LegalPage";
 
+import { PRICE_LABEL, MAX_SIGNERS, MAX_PAGES } from "@/lib/shared";
+
+// The cost answer appears twice — once in the FAQPage structured data and
+// once on the page. Google treats markup that does not match visible text
+// as a manual-action risk, so both read from this one string.
+const COST_ANSWER = `${PRICE_LABEL} per envelope. Flat — one price whether it’s a one-page form with one signer or a hundred-page contract with ten. No subscription, no per-signature fees, no account required. The limits are ${MAX_SIGNERS} signers and ${MAX_PAGES} pages per envelope.`;
+
+
+
+
+
+
+
 export const metadata = {
   title: "FAQ — Electronic Signature Questions",
   description:
