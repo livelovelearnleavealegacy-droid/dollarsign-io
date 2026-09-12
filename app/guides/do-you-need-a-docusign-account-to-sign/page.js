@@ -135,7 +135,7 @@ export default function Page() {
       </p>
 
       <Cta>
-        <strong>Sending, not signing?</strong> DollarSign.io is $1.99 per envelope with no account for anyone — not for
+        <strong>Sending, not signing?</strong> DollarSign.io is $1.00 per envelope with no account for anyone — not for
         you, and not for your signers. Up to 10 signers and 100 pages, and everyone gets the signed PDF with a
         Certificate of Completion. <a href="/" style={link}>Upload a document</a> to try it.
       </Cta>
