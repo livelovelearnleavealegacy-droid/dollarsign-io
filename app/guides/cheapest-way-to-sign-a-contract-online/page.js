@@ -40,13 +40,13 @@ export default function Page() {
       <Table
         head={["Per year", "DocuSign Personal", "DocuSign Standard", "Adobe Acrobat Pro", "$1.99 per envelope"]}
         rows={[
-          ["1", "$132", "$360", "$239.88", "$1.99"],
-          ["6", "$132", "$360", "$239.88", "$11.94"],
-          ["12", "$132", "$360", "$239.88", "$23.88"],
-          ["24", "$132", "$360", "$239.88", "$47.76"],
-          ["60", "$132 (at the cap)", "$360", "$239.88", "$119.40"],
-          ["100", "not possible", "$360 (at the cap)", "$239.88", "$199.00"],
-          ["250", "not possible", "$1,080 (3 seats)", "$239.88", "$497.50"],
+          ["1", "$132", "$360", "$239.88", "$1.00"],
+          ["6", "$132", "$360", "$239.88", "$6.00"],
+          ["12", "$132", "$360", "$239.88", "$12.00"],
+          ["24", "$132", "$360", "$239.88", "$24.00"],
+          ["60", "$132 (at the cap)", "$360", "$239.88", "$60.00"],
+          ["100", "not possible", "$360 (at the cap)", "$239.88", "$100.00"],
+          ["250", "not possible", "$1,080 (3 seats)", "$239.88", "$250.00"],
         ]}
         note="Annual-commitment pricing. DocuSign Personal allows 5 envelopes a month; Standard allows 100 per user per year, so higher volumes need more seats."
       />
