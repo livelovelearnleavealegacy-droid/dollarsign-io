@@ -27,6 +27,9 @@ const BASE = (ENV.BASE_URL || (!IS_NODE ? location.origin : "https://dollarsign-
 const TEST_EMAIL = ENV.TEST_EMAIL || "livelovelearnleavealegacy@gmail.com";
 const PAID_ID = ENV.PAID_ENVELOPE_ID || null;
 const SKIP_EMAIL = ENV.SKIP_EMAIL === "1";
+// The flat price the server should charge. Kept as one constant so a
+// price change is a single edit here rather than a hunt through assertions.
+const EXPECTED_PRICE = Number(ENV.EXPECTED_PRICE ?? 1);
 
 // 1x1 PNG — the smallest thing the upload endpoint will accept.
 const PNG_B64 = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
@@ -259,7 +262,7 @@ async function main() {
     const env = r.json.envelope;
     draftId = env.id;
     assertEq(env.status, "pending_payment", "new envelope status");
-    assertEq(env.price.total, 1.99, "price");
+    assertEq(env.price.total, 1.00, "price");
     assert(/^ENV-[A-Z0-9]{6}$/.test(env.trackingId), `tracking id looks wrong: ${env.trackingId}`);
     assertEq(env.signers.length, 2, "signer count");
   });
@@ -269,7 +272,7 @@ async function main() {
     const payload = { ...envelopePayload({ pageIds: [pageId] }), price: { total: 0.01 } };
     const r = await api("/api/envelopes", { method: "POST", json: payload });
     assertEq(r.status, 200, "status");
-    assertEq(r.json.envelope.price.total, 1.99, "price after client tampering");
+    assertEq(r.json.envelope.price.total, 1.00, "price after client tampering");
   });
 
   await test("unknown envelope id returns 404", async () => {
